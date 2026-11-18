@@ -86,10 +86,10 @@ export function App() {
 
   const handleToggleLightMode = () => {
     if (currentTheme.isLight) {
-      const darkTheme = GAME_THEMES.find(t => t.id === 'void') || GAME_THEMES[2];
+      const darkTheme = GAME_THEMES.find(t => t.id === 'graphite') || GAME_THEMES[0];
       handleSelectTheme(darkTheme);
     } else {
-      const lightTheme = GAME_THEMES.find(t => t.id === 'light_pure') || GAME_THEMES[0];
+      const lightTheme = GAME_THEMES.find(t => t.id === 'light_pure') || GAME_THEMES[3];
       handleSelectTheme(lightTheme);
     }
   };
@@ -104,10 +104,9 @@ export function App() {
   return (
     <div
       style={{ backgroundColor: currentTheme.bgHex }}
-      className={`min-h-screen ${currentTheme.isLight ? 'text-slate-900' : 'text-slate-100'} flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-300 relative`}
+      className="min-h-screen text-[var(--text-primary)] flex flex-col selection:bg-[var(--accent-subtle)] selection:text-[var(--text-primary)] transition-colors duration-150 relative"
     >
-      {/* Living 5-Layer Parallax Atmosphere Background */}
-      <AtmosphericBackground lowGraphics={false} />
+      <AtmosphericBackground lowGraphics={true} />
 
       {/* Floating Mobile Rotation Button for Phones */}
       <MobileRotateButton

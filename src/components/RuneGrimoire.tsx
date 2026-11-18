@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, Check, Zap, Info } from 'lucide-react';
+import { ArrowLeft, Check, Zap, Info, Layers } from 'lucide-react';
 import { ALL_RUNES } from '../../shared/runes.ts';
-import { RuneCategory, RuneDef } from '../../shared/types.ts';
-import { RuneIcon } from './RuneIcon.tsx';
+import { RuneDef } from '../../shared/types.ts';
 import { RuneStone } from './RuneStone.tsx';
 
 interface RuneGrimoireProps {
@@ -17,17 +16,16 @@ export const RuneGrimoire: React.FC<RuneGrimoireProps> = ({
   onBack,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  // Enforce 1 single rune selection as requested by the user
-  const initialRuneId = (equippedRunes && equippedRunes.length > 0) ? equippedRunes[0] : 'rune_shield';
+  const initialRuneId = equippedRunes && equippedRunes.length > 0 ? equippedRunes[0] : 'rune_shield';
   const [selectedRuneId, setSelectedRuneId] = useState<string>(initialRuneId);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const categories: { id: string; name: string }[] = [
-    { id: 'all', name: 'Tất Cả (16 Ấn Chú)' },
-    { id: 'DEFENSE', name: '🛡️ Phòng Thủ & Hồi Sinh (4 Ấn)' },
-    { id: 'TIME', name: '⏳ Kéo Dài Thời Gian (4 Ấn)' },
-    { id: 'POINTS', name: '💎 Nhân Điểm & Combo (4 Ấn)' },
-    { id: 'MAGIC', name: '✨ Ma Thuật Huyền Bí (4 Ấn)' },
+    { id: 'all', name: 'Tất cả (16 cổ ngữ)' },
+    { id: 'DEFENSE', name: 'Phòng thủ & hồi sinh' },
+    { id: 'TIME', name: 'Kéo dài thời gian' },
+    { id: 'POINTS', name: 'Nhân điểm & combo' },
+    { id: 'MAGIC', name: 'Chiến thuật đặc biệt' },
   ];
 
   const handleSelectRune = (runeId: string) => {
@@ -49,132 +47,132 @@ export const RuneGrimoire: React.FC<RuneGrimoireProps> = ({
 
   const activeRuneDef = ALL_RUNES.find(r => r.id === selectedRuneId);
 
-  // Helper to describe activation mechanism
   const getActivationGuide = (rune: RuneDef) => {
     switch (rune.id) {
       case 'rune_revive':
-        return 'Tự động kích hoạt khi BUST: Cứu lại 50% điểm an toàn của lượt đó vào kho. Duy nhất 1 lần trong cả trận đấu!';
+        return 'Tự động kích hoạt khi BUST: giữ lại 50% điểm lượt vào kho an toàn (1 lần/trận)';
       case 'rune_shield':
-        return 'Tự động kích hoạt khi rút trùng hệ: Vô hiệu hóa cú nổ BUST đầu tiên trong mỗi lượt thi đấu!';
+        return 'Tự động kích hoạt khi rút trùng hệ: vô hiệu hóa cú nổ BUST đầu tiên trong mỗi lượt';
       case 'rune_insurance':
-        return 'Tự động kích hoạt: Khóa lá bài điểm cao nhất trên bàn vào kho an toàn khi gom từ 2 lá trở lên (1 lần/lượt).';
+        return 'Tự động kích hoạt: khóa lá điểm cao nhất trên bàn vào kho an toàn khi gom từ 2 lá (1 lần/lượt)';
       case 'rune_retry':
-        return 'Tự động kích hoạt khi trả lời sai: Cho phép làm lại câu hỏi toán với thêm 15 giây hồi phục (1 lần/lượt).';
+        return 'Tự động kích hoạt khi trả lời sai: cho phép làm lại câu hỏi với thêm 15 giây (1 lần/lượt)';
       case 'rune_freeze':
-        return 'Nội tại liên tục: Tự động cộng thêm +20 giây suy nghĩ cho mọi câu hỏi toán trong suốt cả trận.';
+        return 'Nội tại liên tục: tự động cộng thêm 20 giây suy nghĩ cho mọi câu hỏi trong trận';
       case 'rune_haste':
-        return 'Nội tại áp chế: Giảm 8 giây thời gian suy nghĩ của đối thủ trong mọi lượt thi đấu của họ.';
+        return 'Nội tại áp chế: giảm 8 giây thời gian suy nghĩ của đối thủ trong mọi lượt';
       case 'rune_time_plus':
-        return 'Nội tại liên tục: Luôn có 60 giây thời gian tư duy và nhận thưởng +3 điểm khi trả lời nhanh dưới 12 giây.';
+        return 'Nội tại liên tục: có 60 giây tư duy và nhận thưởng 3 điểm khi trả lời dưới 12 giây';
       case 'rune_swap_question':
-        return 'Chủ động bấm (1 lần/lượt): Đổi ngay câu hỏi toán khó sang một câu hỏi khác cùng hệ.';
+        return 'Chủ động bấm (1 lần/lượt): đổi câu hỏi hiện tại sang một câu hỏi khác cùng hệ';
       case 'rune_double':
-        return 'Chủ động bấm (1 lần/lượt): Nhân x1.5 điểm cho 1 lá bài giải đúng trong lượt thi đấu.';
+        return 'Chủ động bấm (1 lần/lượt): nhân 1,5 lần điểm cho 1 lá bài giải đúng trong lượt';
       case 'rune_bank_bonus':
-        return 'Tự động khi bấm BANK: Thưởng thêm +15 điểm trực tiếp vào kho an toàn (1 lần/lượt).';
+        return 'Tự động khi bấm BANK: thưởng thêm 15 điểm vào kho an toàn (1 lần/lượt)';
       case 'rune_harvest':
-        return 'Tự động khi gom từ 3 lá trên bàn: Thưởng thêm +15 điểm kinh nghiệm vào lượt (1 lần/lượt).';
+        return 'Tự động khi gom đủ 3 lá trên bàn: thưởng thêm 15 điểm vào lượt (1 lần/lượt)';
       case 'rune_siphon':
-        return 'Tự động khi trả lời đúng: Hút 3 điểm an toàn từ đối thủ sang kho của bạn (1 lần/lượt).';
+        return 'Tự động khi trả lời đúng: hút 3 điểm an toàn từ đối thủ sang kho của bạn (1 lần/lượt)';
       case 'rune_foresight':
-        return 'Nội tại thấu thị: Luôn nhìn thấy trước hệ và điểm số của lá bài trên đỉnh bộ bài để né BUST.';
+        return 'Nội tại thấu thị: nhìn thấy trước hệ và điểm của lá trên đỉnh bộ bài';
       case 'rune_purify':
-        return 'Chủ động bấm (1 lần/lượt): Thanh tẩy toàn bộ lá bài trên bàn, đưa nguy cơ BUST về 0%.';
+        return 'Chủ động bấm (1 lần/lượt): làm mới các hệ trên bàn, đưa nguy cơ BUST về 0%';
       case 'rune_curse':
-        return 'Chủ động bấm: Ám bùa nguyền rủa lên đối thủ, làm giảm điểm cất giữ của họ.';
+        return 'Chủ động bấm: trừ điểm an toàn của đối thủ ngay trong trận đấu';
       case 'rune_immortal':
-        return 'Tự động kích hoạt khi HP về 0: Hồi sinh lập tức với 20 HP bảo mệnh (Duy nhất 1 lần/trận).';
+        return 'Tự động kích hoạt khi HP về 0: hồi phục ngay với 20 HP (1 lần/trận)';
       default:
-        return 'Kích hoạt trong lượt của bạn để xoay chuyển cục diện trận đấu.';
+        return 'Kích hoạt trong lượt của bạn để tạo lợi thế chiến thuật';
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
+          type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay Lại Sảnh Chính</span>
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+          <span>Quay lại sảnh chính</span>
         </button>
 
-        <div className="flex items-center gap-2 px-3 py-1 bg-purple-950/40 border border-purple-800/40 rounded-full text-xs font-mono text-purple-300">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Grimoire: Chọn Duy Nhất 1 Rune Bảo Mệnh</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-md text-xs font-mono tabular-nums text-[var(--text-secondary)]">
+          <Layers className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+          <span>Trang bị 1/1 cổ ngữ</span>
         </div>
       </div>
 
-      <div className="text-center space-y-1">
-        <h2 className="font-cinzel text-2xl sm:text-3xl font-black text-purple-200">
-          THƯ VIỆN CỔ NGỮ RUNE & TÁC DỤNG PHÁP THUẬT
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">
+          Thư viện 16 cổ ngữ Rune
         </h2>
-        <p className="text-xs text-slate-400 max-w-xl mx-auto">
-          Mỗi trận đấu, pháp sư chỉ được chọn <strong>duy nhất 1 lá Rune</strong> để bảo mệnh và thi triển phép thuật. Hãy cân nhắc kỹ tác dụng của từng ấn chú!
+        <p className="text-sm text-[var(--text-secondary)] max-w-2xl">
+          Mỗi trận đấu bạn mang theo duy nhất một cổ ngữ hỗ trợ. Chọn cổ ngữ bên dưới và lưu vào hồ sơ
         </p>
       </div>
 
-      {/* CURRENTLY EQUIPPED 1-RUNE SHOWCASE */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border-2 border-amber-500/80 rounded-3xl space-y-3 shadow-xl">
-        <div className="flex items-center justify-between">
+      <div className="p-4 sm:p-5 bg-[var(--bg-surface)] border border-[var(--accent)] rounded-xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold text-amber-300 uppercase tracking-wider font-cinzel">
-              1 RUNE ĐANG TRANG BỊ VÀO TRẬN ĐẤU (1/1)
+            <span className="w-2 h-2 rounded-full bg-[var(--status-success)]" />
+            <span className="text-xs font-medium text-[var(--text-primary)]">
+              Cổ ngữ đang chọn cho trận đấu (1/1)
             </span>
           </div>
           <button
+            type="button"
             onClick={handleSave}
-            className="px-5 py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all active:scale-95"
+            className="h-9 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg inline-flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            {saveSuccess ? '✓ Đã Lưu Rune Vào Hồ Sơ!' : 'Lưu Trang Bị Này'}
+            {saveSuccess && <Check className="w-4 h-4" strokeWidth={1.5} />}
+            <span>{saveSuccess ? 'Đã lưu vào hồ sơ' : 'Lưu trang bị này'}</span>
           </button>
         </div>
 
         {activeRuneDef ? (
-          <div className="p-4 bg-slate-950/85 border border-indigo-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-inner">
-            <div className="flex items-center gap-4">
-              <RuneStone rune={activeRuneDef} size="lg" isActive={true} />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-lg font-bold text-amber-200 font-cinzel">
-                    {activeRuneDef.name}
-                  </h4>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800">
-                    {activeRuneDef.categoryNameVi}
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-700">
-                    Tối đa {activeRuneDef.maxUses} lần/trận
-                  </span>
-                </div>
-                <div className="text-xs text-amber-300/95 font-medium flex items-center gap-1.5 pt-1">
-                  <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span><strong>Tác dụng:</strong> {activeRuneDef.description}</span>
-                </div>
-                <div className="text-[11px] text-slate-300 font-light flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span>{getActivationGuide(activeRuneDef)}</span>
-                </div>
+          <div className="p-4 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <RuneStone rune={activeRuneDef} size="lg" isActive={true} />
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-base font-semibold text-[var(--text-primary)]">
+                  {activeRuneDef.name}
+                </h4>
+                <span className="text-xs px-2 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-secondary)] border border-[var(--border-hairline)]">
+                  {activeRuneDef.categoryNameVi}
+                </span>
+                <span className="text-xs font-mono tabular-nums px-2 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--accent-text)] border border-[var(--border-hairline)]">
+                  Tối đa {activeRuneDef.maxUses} lần/trận
+                </span>
+              </div>
+              <div className="text-xs text-[var(--text-primary)] flex items-start gap-2">
+                <Zap className="w-4 h-4 text-[var(--accent-text)] shrink-0 mt-0.5" strokeWidth={1.5} />
+                <span>{activeRuneDef.description}</span>
+              </div>
+              <div className="text-xs text-[var(--text-secondary)] flex items-start gap-2">
+                <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.5} />
+                <span>{getActivationGuide(activeRuneDef)}</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-xs text-slate-400 italic p-3">Chưa chọn Rune nào. Hãy bấm vào một Rune bên dưới.</div>
+          <div className="text-xs text-[var(--text-muted)] p-3">
+            Chưa chọn cổ ngữ nào
+          </div>
         )}
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {categories.map(c => (
           <button
             key={c.id}
+            type="button"
             onClick={() => setActiveCategory(c.id)}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl border whitespace-nowrap transition-all ${
+            className={`h-9 px-3.5 text-xs font-medium rounded-lg border whitespace-nowrap transition-colors cursor-pointer ${
               activeCategory === c.id
-                ? 'bg-purple-600 border-purple-400 text-white shadow-lg scale-102'
-                : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
+                ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                : 'bg-[var(--bg-surface)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]'
             }`}
           >
             {c.name}
@@ -182,7 +180,6 @@ export const RuneGrimoire: React.FC<RuneGrimoireProps> = ({
         ))}
       </div>
 
-      {/* Runes Grid with Explicit Effect and Usage Display */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredRunes.map(rune => {
           const isSelected = selectedRuneId === rune.id;
@@ -191,67 +188,62 @@ export const RuneGrimoire: React.FC<RuneGrimoireProps> = ({
             <div
               key={rune.id}
               onClick={() => handleSelectRune(rune.id)}
-              style={{
-                borderColor: isSelected ? rune.color : '#334155',
-                boxShadow: isSelected ? `0 0 25px ${rune.color}55` : undefined,
-              }}
-              className={`p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between hover:scale-[1.02] relative select-none ${
+              className={`p-4 rounded-xl border cursor-pointer transition-colors duration-150 flex flex-col justify-between gap-4 select-none ${
                 isSelected
-                  ? 'bg-gradient-to-b from-indigo-950/80 via-slate-900 to-indigo-950/90 border-amber-400 ring-2 ring-amber-400/50 shadow-xl'
-                  : 'bg-slate-900/90 hover:bg-slate-850 hover:border-slate-600'
+                  ? 'bg-[var(--bg-raised)] border-[var(--accent)]'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-hairline)] hover:border-[var(--border-strong)]'
               }`}
             >
-              {isSelected && (
-                <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 text-[10px] font-black uppercase flex items-center gap-1 shadow-lg">
-                  <Check className="w-3 h-3 stroke-[3]" /> Đang Trang Bị
-                </div>
-              )}
-
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <RuneStone rune={rune} size="md" isActive={isSelected} />
-                  <div>
-                    <h3 className="font-cinzel text-sm font-bold text-slate-100" style={{ color: rune.color }}>
-                      {rune.name}
-                    </h3>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
-                      <span>{rune.categoryNameVi}</span>
-                      <span>•</span>
-                      <span className="text-amber-300">Dùng {rune.maxUses} lần/trận</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <RuneStone rune={rune} size="md" isActive={isSelected} />
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                        {rune.name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-mono tabular-nums mt-0.5">
+                        <span>{rune.categoryNameVi}</span>
+                        <span>·</span>
+                        <span>{rune.maxUses} lần/trận</span>
+                      </div>
                     </div>
                   </div>
+                  {isSelected && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-fg)] text-[11px] font-medium shrink-0">
+                      <Check className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      <span>Đang chọn</span>
+                    </span>
+                  )}
                 </div>
 
-                {/* TÁC DỤNG CỦA RUNE */}
-                <div className="p-2.5 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                  <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Tác dụng chính:</span>
+                <div className="p-3 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg space-y-1">
+                  <div className="text-xs font-medium text-[var(--accent-text)] flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                    <span>Tác dụng chính</span>
                   </div>
-                  <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                  <p className="text-xs text-[var(--text-primary)] leading-relaxed">
                     {rune.description}
                   </p>
                 </div>
 
-                {/* HƯỚNG DẪN KÍCH HOẠT */}
-                <div className="text-[10px] text-slate-400 flex items-start gap-1 font-light italic">
-                  <Info className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" />
+                <div className="text-xs text-[var(--text-secondary)] flex items-start gap-1.5 leading-relaxed">
+                  <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.5} />
                   <span>{getActivationGuide(rune)}</span>
                 </div>
               </div>
 
-              <div className="mt-4 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                <span className="text-[10px] font-mono text-slate-500">Mã: #{rune.id}</span>
-                <button
-                  type="button"
-                  className={`font-bold px-3 py-1 rounded-lg text-xs transition-colors ${
+              <div className="pt-3 border-t border-[var(--border-hairline)] flex items-center justify-between gap-2 text-xs">
+                <span className="font-mono text-[var(--text-muted)] truncate">{rune.id}</span>
+                <span
+                  className={`px-3 py-1 rounded-md font-medium ${
                     isSelected
-                      ? 'bg-amber-400 text-slate-950 font-black'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      ? 'bg-[var(--accent)] text-[var(--accent-fg)]'
+                      : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border border-[var(--border-hairline)]'
                   }`}
                 >
-                  {isSelected ? '✓ Đang Dùng' : 'Chọn Rune Này'}
-                </button>
+                  {isSelected ? 'Đang dùng' : 'Chọn cổ ngữ'}
+                </span>
               </div>
             </div>
           );

@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import {
-  GameState,
-  Card,
-  PlayerState,
-  MathCategory,
-} from '../../shared/types.ts';
+import { GameState, Card, PlayerState } from '../../shared/types.ts';
 import { ALL_RUNES } from '../../shared/runes.ts';
 import { MATH_DOMAINS, DECK_60_CARDS } from '../../shared/cards.ts';
 import { HowToPlayModal } from './HowToPlayModal.tsx';
 import { RuneIcon } from './RuneIcon.tsx';
 import { MathCard } from './MathCard.tsx';
 import { RuneStone } from './RuneStone.tsx';
-import { DomainArt } from './DomainArt.tsx';
 import { DrawButton } from './DrawButton.tsx';
 import { FlipCardReveal } from './FlipCardReveal.tsx';
 import { BustImpactOverlay } from './BustImpactOverlay.tsx';
 import { AnimatedCounter } from './AnimatedCounter.tsx';
+import { AvatarBadge } from './AvatarBadge.tsx';
 import {
   Shield,
   ShieldAlert,
@@ -25,22 +20,19 @@ import {
   Coins,
   Layers,
   Clock,
-  Sparkles,
   AlertTriangle,
   RotateCcw,
-  CheckCircle2,
-  XCircle,
   Trophy,
-  ArrowRight,
-  Flame,
   Award,
   Zap,
   HelpCircle,
   BookOpen,
   X,
-  Info,
   Flag,
-  Smartphone,
+  Check,
+  Globe,
+  Swords,
+  Heart,
 } from 'lucide-react';
 
 interface GameArenaProps {
@@ -76,43 +68,44 @@ export const GameArena: React.FC<GameArenaProps> = ({
 }) => {
   const [answerInput, setAnswerInput] = useState('');
   const [timeLeft, setTimeLeft] = useState<number>(45);
-  const [showExplanation, setShowExplanation] = useState<boolean>(false);
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
   const [showSurrenderModal, setShowSurrenderModal] = useState<boolean>(false);
   const [inspectedTableCard, setInspectedTableCard] = useState<Card | null>(null);
 
-  // Identify who is YOU and who is OPPONENT
-  const you: PlayerState | undefined = gameState.players[currentUserId] || Object.values(gameState.players)[0];
-  const opponent: PlayerState | undefined = Object.values(gameState.players).find(p => p.id !== you?.id);
+  const you: PlayerState | undefined =
+    gameState.players[currentUserId] || Object.values(gameState.players)[0];
+  const opponent: PlayerState | undefined = Object.values(gameState.players).find(
+    p => p.id !== you?.id
+  );
 
   const isMyTurn = gameState.currentPlayerId === you?.id;
   const isGameOver = gameState.status === 'game_over';
   const isWinner = gameState.winnerId === you?.id;
 
-  // Active drawn card being resolved or answered (fallback to category match if needed)
   const activeCard: Card | undefined =
     gameState.currentCard ||
     (gameState.currentQuestion
-      ? (DECK_60_CARDS.find(c => c.domainId === gameState.currentQuestion?.category) || DECK_60_CARDS[0])
+      ? DECK_60_CARDS.find(c => c.domainId === gameState.currentQuestion?.category) ||
+        DECK_60_CARDS[0]
       : undefined);
 
-  // Calculate unique domains on table to show live BUST risk
   const tableDomains = new Set(gameState.tableCards.map(c => c.domainId));
   const bustRiskPercent = Math.min(100, Math.round((tableDomains.size / 10) * 100));
 
-  // Countdown timer effect: pure client countdown per question ID (immune to clock drift)
   useEffect(() => {
     if (!gameState.currentQuestion) {
       setTimeLeft(45);
       return;
     }
 
-    // Give abundant 45s for solving math
-    const limit = Math.max(gameState.currentQuestion.timeLimit || gameState.questionTimeLimit || 45, 45);
+    const limit = Math.max(
+      gameState.currentQuestion.timeLimit || gameState.questionTimeLimit || 45,
+      45
+    );
     setTimeLeft(limit);
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
+      setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(interval);
           if (isMyTurn) {
@@ -127,13 +120,12 @@ export const GameArena: React.FC<GameArenaProps> = ({
     return () => clearInterval(interval);
   }, [gameState.currentQuestion?.id, isMyTurn]);
 
-  // Confetti on win
   useEffect(() => {
     if (isGameOver && isWinner) {
       try {
         confetti({
-          particleCount: 120,
-          spread: 80,
+          particleCount: 90,
+          spread: 70,
           origin: { y: 0.6 },
         });
       } catch (e) {
@@ -149,115 +141,105 @@ export const GameArena: React.FC<GameArenaProps> = ({
   };
 
   return (
-    <div className={`relative min-h-[calc(100vh-65px)] flex flex-col justify-between px-2 sm:px-6 py-2 sm:py-3 max-w-5xl mx-auto select-none safe-pb ${isLandscape || isWidescreenCompact ? 'widescreen-arena-compact landscape-compact-py' : ''} ${lastBustAlert ? 'animate-shake' : ''}`}>
-      {/* ⚠️ BUST FULLSCREEN IMPACT OVERLAY */}
+    <div
+      className={`relative min-h-[calc(100vh-56px)] flex flex-col justify-between px-3 sm:px-6 py-3 max-w-5xl mx-auto select-none safe-pb ${
+        isLandscape || isWidescreenCompact ? 'widescreen-arena-compact landscape-compact-py' : ''
+      }`}
+    >
       {lastBustAlert && <BustImpactOverlay />}
 
-      {/* ========================================================= */}
-      {/* 🌟 RUNE DRAFTING MODAL: DEALT 2 RUNES, PICK 1 FOR MATCH    */}
-      {/* ========================================================= */}
+      {/* RUNE DRAFTING MODAL */}
       {gameState.status === 'drafting' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-in fade-in duration-250">
-          <div className="w-full max-w-2xl my-auto p-5 sm:p-7 bg-slate-900 border-2 border-amber-500/80 rounded-3xl shadow-2xl space-y-6 text-center">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>GIAI ĐOẠN KHỞI NGUYÊN • ĐẤU TRƯỜNG TOÁN HỌC</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 overflow-y-auto">
+          <div
+            className="w-full max-w-2xl my-auto p-5 sm:p-6 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl space-y-5"
+            style={{ boxShadow: 'var(--shadow-panel)' }}
+          >
+            <div className="space-y-1 text-center">
+              <div className="text-xs font-mono text-[var(--accent-text)]">
+                Khởi đầu trận đấu
               </div>
-              <h2 className="font-cinzel text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 drop-shadow">
-                CHỌN 1 TRONG 2 LÁ BÀI RUNE
+              <h2 className="text-xl sm:text-2xl font-semibold text-[var(--text-primary)]">
+                Chọn 1 trong 2 cổ ngữ Rune
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
-                Bạn và đối thủ được chia 2 lá bài Rune ngẫu nhiên khác nhau. Hãy chọn <strong>1 lá bài duy nhất</strong> — lá bài này sẽ có <strong className="text-amber-300">tác dụng xuyên suốt toàn bộ trận đấu</strong>!
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-lg mx-auto">
+                Cổ ngữ bạn chọn sẽ có hiệu lực hỗ trợ xuyên suốt toàn bộ trận đấu
               </p>
             </div>
 
             {!you?.chosenRuneId ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                {((you?.draftRunes && you.draftRunes.length > 0) ? you.draftRunes : ['rune_shield', 'rune_revive']).map((rId) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(you?.draftRunes && you.draftRunes.length > 0
+                  ? you.draftRunes
+                  : ['rune_shield', 'rune_revive']
+                ).map(rId => {
                   const rDef = ALL_RUNES.find(r => r.id === rId);
                   if (!rDef) return null;
+                  const limitText =
+                    rDef.limitType === 'once_per_match'
+                      ? '1 lần/trận'
+                      : rDef.limitType === 'once_per_turn'
+                      ? '1 lần/lượt'
+                      : 'Nội tại liên tục';
+
                   return (
                     <div
                       key={rId}
-                      style={{ borderColor: rDef.color, boxShadow: `0 0 24px ${rDef.color}44` }}
-                      className="p-5 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-2 rounded-3xl flex flex-col justify-between space-y-4 hover:border-amber-400 transition-all group"
+                      className="p-4 bg-[var(--bg-inset)] border border-[var(--border-hairline)] hover:border-[var(--accent)] rounded-xl flex flex-col justify-between gap-4 transition-colors"
                     >
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3.5">
+                        <div className="flex items-start gap-3">
                           <RuneStone rune={rDef} size="lg" isActive={true} />
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-cinzel text-base font-bold text-amber-200 group-hover:text-amber-100">
-                                {rDef.name}
-                              </h4>
-                              {rDef.limitType === 'once_per_match' && (
-                                <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-rose-950/80 text-rose-300 border border-rose-500/50 uppercase tracking-wider animate-pulse">
-                                  1 Lần / Trận
-                                </span>
-                              )}
-                              {rDef.limitType === 'once_per_turn' && (
-                                <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-amber-950/80 text-amber-300 border border-amber-500/50 uppercase tracking-wider">
-                                  1 Lần / Lượt
-                                </span>
-                              )}
-                              {rDef.limitType === 'continuous' && (
-                                <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-cyan-950/80 text-cyan-300 border border-cyan-500/50 uppercase tracking-wider">
-                                  Liên Tục
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-mono text-purple-300 uppercase tracking-wider">
-                              Ấn Chú Nội Tại Trận Đấu
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <h4 className="text-sm font-semibold text-[var(--text-primary)]">
+                              {rDef.name}
+                            </h4>
+                            <span className="inline-block px-2 py-0.5 text-[11px] font-mono rounded bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--accent-text)]">
+                              {limitText}
                             </span>
                           </div>
                         </div>
 
-                        <p className="text-xs text-slate-300 leading-relaxed font-light">
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                           {rDef.description}
                         </p>
 
-                        <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-200 font-medium">
-                          <div className="font-bold text-amber-400 flex items-center justify-between mb-0.5">
-                            <div className="flex items-center gap-1">
-                              <Zap className="w-3.5 h-3.5" />
-                              <span>Hiệu năng kích hoạt:</span>
-                            </div>
-                            <span className="text-[10px] font-mono text-slate-300">
-                              {rDef.limitType === 'once_per_match'
-                                ? '⚠️ Duy nhất 1 lần cả trận'
-                                : rDef.limitType === 'once_per_turn'
-                                ? '🔄 Tự làm mới mỗi lượt'
-                                : '⚡ Kích hoạt vĩnh viễn'}
-                            </span>
+                        <div className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-xs space-y-1">
+                          <div className="font-medium text-[var(--accent-text)] flex items-center gap-1.5">
+                            <Zap className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
+                            <span>Hiệu lực áp dụng</span>
                           </div>
-                          <span>{rDef.persistentEffectDesc || rDef.description}</span>
+                          <div className="text-[var(--text-secondary)]">
+                            {rDef.persistentEffectDesc || rDef.description}
+                          </div>
                         </div>
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => onChooseDraftRune(rId)}
-                        className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2"
+                        className="w-full h-9 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg transition-colors cursor-pointer"
                       >
-                        <Sparkles className="w-4 h-4" />
-                        <span>CHỌN LÁ RUNE NÀY</span>
+                        Chọn cổ ngữ này
                       </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-6 bg-slate-950/90 border border-amber-500/50 rounded-2xl space-y-3">
-                <div className="text-4xl animate-bounce">✨</div>
-                <h3 className="font-cinzel text-lg font-bold text-amber-300">
-                  BẠN ĐÃ CHỌN XONG ẤN CHÚ NỘI TẠI!
+              <div className="p-5 bg-[var(--bg-inset)] border border-[var(--accent)] rounded-xl space-y-3 text-center">
+                <div className="w-10 h-10 mx-auto rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent)] flex items-center justify-center text-[var(--accent-text)]">
+                  <Check className="w-5 h-5" strokeWidth={1.5} />
+                </div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                  Đã chọn cổ ngữ {ALL_RUNES.find(r => r.id === you.chosenRuneId)?.name}
                 </h3>
-                <p className="text-xs text-slate-300">
-                  {ALL_RUNES.find(r => r.id === you.chosenRuneId)?.name}: {ALL_RUNES.find(r => r.id === you.chosenRuneId)?.persistentEffectDesc}
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {ALL_RUNES.find(r => r.id === you.chosenRuneId)?.persistentEffectDesc}
                 </p>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono text-slate-400 animate-pulse">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Đang chờ đối thủ chọn xong... Trận đấu sẽ tự động bắt đầu!</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-xs font-mono text-[var(--text-muted)]">
+                  <Clock className="w-3.5 h-3.5 text-[var(--accent-text)]" strokeWidth={1.5} />
+                  <span>Đang chờ đối thủ hoàn tất chọn cổ ngữ...</span>
                 </div>
               </div>
             )}
@@ -265,193 +247,184 @@ export const GameArena: React.FC<GameArenaProps> = ({
         </div>
       )}
 
-      {/* TOP BAR: Room Code, Round, Target Score, Rules and Exit */}
-      <div className="flex items-center justify-between gap-2 px-2.5 sm:px-3 py-1.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs font-mono flex-wrap sm:flex-nowrap gap-y-1.5">
+      {/* TOP BAR */}
+      <div className="flex items-center justify-between gap-3 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl text-xs font-mono tabular-nums flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2">
-          <span className="text-slate-400">PHÒNG:</span>
-          <span className="font-bold text-amber-300 tracking-wider">{gameState.roomCode}</span>
-          <span className="hidden sm:inline text-slate-500">• Cấp: {gameState.mathLevel}</span>
+          <span className="text-[var(--text-muted)]">Phòng:</span>
+          <span className="font-semibold text-[var(--text-primary)]">{gameState.roomCode}</span>
+          <span className="hidden sm:inline text-[var(--text-muted)]">
+            · Cấp {gameState.mathLevel}
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-slate-300">
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Kho Thẻ: <strong className="text-slate-100">{gameState.deckRemaining}</strong></span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Layers className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+            <span>
+              Bộ bài: <span className="font-semibold text-[var(--text-primary)]">{gameState.deckRemaining}</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-1 text-amber-300 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded-md">
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>Mục Tiêu: <strong>{gameState.targetScore}đ</strong></span>
+          <div className="flex items-center gap-1.5 text-[var(--accent-text)]">
+            <Trophy className="w-4 h-4" strokeWidth={1.5} />
+            <span>Mục tiêu: {gameState.targetScore}đ</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setShowRulesModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition-all shadow-sm"
+            className="h-7 px-2.5 bg-[var(--bg-inset)] hover:bg-[var(--bg-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-hairline)] rounded-md text-xs font-sans font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Luật Chơi</span>
+            <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <span>Luật chơi</span>
           </button>
           {!isGameOver && (
             <button
+              type="button"
               onClick={() => setShowSurrenderModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold transition-all shadow-sm"
-              title="Đầu hàng và chấp nhận thất bại"
+              className="h-7 px-2.5 bg-[var(--status-danger-subtle)] hover:bg-[var(--status-danger)] text-[var(--status-danger)] hover:text-white border border-[var(--status-danger)]/40 rounded-md text-xs font-sans font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Flag className="w-3.5 h-3.5 text-rose-400" />
-              <span>Đầu Hàng</span>
+              <Flag className="w-3.5 h-3.5" strokeWidth={1.5} />
+              <span>Đầu hàng</span>
             </button>
           )}
           <button
+            type="button"
             onClick={onExit}
-            className="text-[11px] text-slate-400 hover:text-rose-400 underline transition-colors ml-1"
+            className="text-xs font-sans text-[var(--text-muted)] hover:text-[var(--text-primary)] underline underline-offset-2 ml-1 cursor-pointer"
           >
-            Rời Trận
+            Rời trận
           </button>
         </div>
       </div>
 
-      {/* ERROR MESSAGE ALERT */}
       {errorMessage && (
-        <div className="my-2 p-2.5 bg-rose-950/80 border border-rose-700 text-rose-200 text-xs rounded-xl text-center flex items-center justify-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="my-2 p-2.5 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)] text-[var(--status-danger)] text-xs rounded-lg flex items-center justify-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 1. OPPONENT SECTION */}
-      {/* ========================================================= */}
-      <div className={`mt-2 p-3 rounded-2xl border transition-all ${
-        !isMyTurn ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-950/40' : 'bg-slate-900/60 border-slate-800/80'
-      }`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl p-1 bg-slate-950 rounded-xl border border-slate-800">
-              {opponent?.avatar || '👤'}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-slate-200">{opponent?.name || 'Đang chờ...'}</span>
+      {/* 1. OPPONENT BAR */}
+      <div
+        className={`mt-2 p-3 rounded-xl border transition-colors ${
+          !isMyTurn
+            ? 'bg-[var(--bg-raised)] border-[var(--accent)]'
+            : 'bg-[var(--bg-surface)] border-[var(--border-hairline)]'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <AvatarBadge avatar={opponent?.avatar} size="md" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                  {opponent?.name || 'Đang chờ đối thủ...'}
+                </span>
                 {!isMyTurn && (
-                  <span className={`px-2.5 py-0.5 text-slate-950 font-black text-[10px] rounded-full uppercase flex items-center gap-1 shadow ${
-                    gameState.aiThinkingStatus ? 'bg-amber-400 animate-pulse ring-2 ring-amber-300/60' : 'bg-amber-500'
-                  }`}>
+                  <span className="px-2 py-0.5 bg-[var(--accent)] text-[var(--accent-fg)] font-medium text-[11px] rounded">
                     {gameState.aiThinkingStatus === 'solving'
-                      ? '⚡ Đang Giải Toán...'
+                      ? 'Đang giải toán'
                       : gameState.aiThinkingStatus === 'thinking'
-                      ? '💭 Đang Suy Tính...'
-                      : 'Đang Lượt'}
+                      ? 'Đang tính lượt'
+                      : 'Đang lượt'}
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-3 mt-0.5 font-mono">
-                <span>❤️ HP: {opponent?.hp || 100}</span>
-                <span className="text-amber-400 flex items-center gap-1">
-                  ⭐ Kho An Toàn: <AnimatedCounter value={opponent?.safeScore || 0} suffix="đ" />
+
+              <div className="text-xs text-[var(--text-secondary)] flex items-center gap-4 mt-0.5 font-mono tabular-nums flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <Heart className="w-3.5 h-3.5 text-[var(--status-danger)]" strokeWidth={1.5} />
+                  <span>HP: {opponent?.hp || 100}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-[var(--accent-text)]">
+                  <span>Kho an toàn:</span>
+                  <AnimatedCounter value={opponent?.safeScore || 0} suffix="đ" />
                 </span>
               </div>
+
               {(() => {
                 const oppRuneId = opponent?.chosenRuneId || opponent?.runes?.[0]?.runeId;
                 if (!oppRuneId) return null;
                 const rDef = ALL_RUNES.find(r => r.id === oppRuneId);
                 const isOncePerMatch = rDef?.limitType === 'once_per_match';
                 const isOncePerTurn = rDef?.limitType === 'once_per_turn';
-                const oppUsed = isOncePerMatch ? opponent.runeUsedInMatch : isOncePerTurn ? opponent.runeUsedThisTurn : false;
-
-                // Defense specific flags
-                const isShield = oppRuneId === 'rune_shield';
-                const isRevive = oppRuneId === 'rune_revive';
+                const oppUsed = isOncePerMatch
+                  ? opponent?.runeUsedInMatch
+                  : isOncePerTurn
+                  ? opponent?.runeUsedThisTurn
+                  : false;
 
                 return (
-                  <div className="text-[10px] text-indigo-300 flex items-center gap-1.5 mt-1 flex-wrap" title={rDef?.persistentEffectDesc || rDef?.description}>
-                    <RuneIcon icon={rDef?.icon || ''} className="w-3.5 h-3.5 inline-block" />
-                    <span className="font-bold">Nội tại: {rDef?.name}</span>
-                    {isOncePerMatch && (
-                      <span className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
-                        oppUsed ? 'bg-slate-800 text-slate-500' : 'bg-rose-950 text-rose-300 border border-rose-800 animate-pulse'
-                      }`}>
-                        {oppUsed ? 'Đã dùng (Hết trận)' : '1 Lần/Trận'}
+                  <div
+                    className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mt-1 flex-wrap"
+                    title={rDef?.persistentEffectDesc || rDef?.description}
+                  >
+                    <RuneIcon icon={rDef?.icon || ''} className="w-3.5 h-3.5 shrink-0" />
+                    <span className="font-medium text-[var(--text-secondary)]">
+                      {rDef?.name}
+                    </span>
+                    {(isOncePerMatch || isOncePerTurn) && (
+                      <span className="px-1.5 py-0.5 text-[11px] font-mono rounded bg-[var(--bg-inset)] border border-[var(--border-hairline)]">
+                        {oppUsed
+                          ? isOncePerMatch
+                            ? 'Đã dùng'
+                            : 'Đã dùng lượt này'
+                          : isOncePerMatch
+                          ? '1 lần/trận'
+                          : '1 lần/lượt'}
                       </span>
                     )}
-                    {isOncePerTurn && (
-                      <span className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
-                        oppUsed ? 'bg-slate-800 text-slate-500' : 'bg-amber-950 text-amber-300 border border-amber-800'
-                      }`}>
-                        {oppUsed ? 'Đã dùng lượt này' : '1 Lần/Lượt'}
-                      </span>
-                    )}
-                    {isShield && !oppUsed && (
-                      <span className="px-1.5 py-0.5 text-[9px] bg-rose-950/90 border border-rose-500 text-rose-300 rounded font-bold flex items-center gap-0.5">
-                        <Shield className="w-2.5 h-2.5" /> Có Khiên Chống BUST
-                      </span>
-                    )}
-                    {isRevive && !oppUsed && (
-                      <span className="px-1.5 py-0.5 text-[9px] bg-red-950/90 border border-red-500 text-red-300 rounded font-bold flex items-center gap-0.5 animate-pulse">
-                        <ShieldAlert className="w-2.5 h-2.5" /> Có Ấn Hồi Sinh 50%
-                      </span>
-                    )}
-                    <span className="text-slate-400 hidden sm:inline">— {rDef?.persistentEffectDesc}</span>
                   </div>
                 );
               })()}
             </div>
           </div>
 
-          <div className="text-right font-mono">
-            <div className="text-[10px] text-slate-400">Điểm Lượt Này</div>
-            <div className="text-lg font-black text-indigo-300">
+          <div className="text-right font-mono tabular-nums shrink-0">
+            <div className="text-[11px] text-[var(--text-muted)]">Điểm lượt</div>
+            <div className="text-lg font-semibold text-[var(--text-primary)]">
               <AnimatedCounter value={opponent?.currentTurnScore || 0} prefix="+" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* 2. CENTER STAGE: CARDS ON TABLE & MATH QUESTION CHAMBER   */}
-      {/* ========================================================= */}
-      <div className="my-3 flex-1 flex flex-col items-center justify-center min-h-[260px] relative">
-        {/* FORESIGHT PREVIEW BANNER (If Rune Tiên Tri is active) */}
+      {/* 2. CENTER TABLE & QUESTION CHAMBER */}
+      <div className="my-3 flex-1 flex flex-col items-center justify-center min-h-[240px] relative space-y-3">
         {gameState.nextCardPreview && (
-          <div className="w-full mb-2 p-2 bg-purple-950/70 border border-purple-500/60 rounded-xl flex items-center justify-center gap-2 text-xs font-mono text-purple-200 shadow-md">
-            <span>👁️ TIÊN TRI NỘI TẠI: Lá bài trên cùng của xấp bài là</span>
-            <span className="font-bold px-2 py-0.5 rounded bg-slate-950 border border-purple-400 text-amber-300">
-              [{gameState.nextCardPreview.domainNameVi}] (+{gameState.nextCardPreview.pointValue}đ)
+          <div className="w-full p-2.5 bg-[var(--bg-surface)] border border-[var(--accent)] rounded-lg flex items-center justify-center gap-2 text-xs font-mono tabular-nums text-[var(--text-primary)]">
+            <span>Tiên tri lá kế tiếp:</span>
+            <span className="font-semibold text-[var(--accent-text)]">
+              {gameState.nextCardPreview.domainNameVi} (+{gameState.nextCardPreview.pointValue}đ)
             </span>
           </div>
         )}
 
-        {/* CARDS DRAWN ON TABLE THIS TURN */}
-        <div className="w-full mb-3">
-          <div className="text-center text-[11px] font-mono text-slate-400 mb-1.5 flex items-center justify-center gap-2">
-            <span>THẺ TRI THỨC TRÊN BÀN LƯỢT NÀY ({gameState.tableCards.length} THẺ)</span>
+        <div className="w-full space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono tabular-nums text-[var(--text-muted)] px-1">
+            <span>Thẻ trên bàn lượt này ({gameState.tableCards.length} thẻ)</span>
             {gameState.tableCards.length > 0 && (
-              <span className="text-amber-400 font-bold">
-                (Tổng: +{gameState.tableCards.reduce((sum, c) => sum + c.pointValue, 0)}đ)
+              <span className="text-[var(--accent-text)] font-medium">
+                Tổng bàn: +{gameState.tableCards.reduce((sum, c) => sum + c.pointValue, 0)}đ
               </span>
             )}
           </div>
 
-          <div className="relative flex items-center justify-center gap-3 flex-wrap min-h-[120px] p-3 sm:p-4 bg-gradient-to-b from-slate-950/80 via-slate-900/90 to-slate-950/80 border border-slate-800/90 rounded-3xl shadow-2xl overflow-hidden">
-            {/* Ambient runic watermark on battle table */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-              <div className="w-64 h-64 rounded-full border-2 border-dashed border-amber-400 animate-rune-spin" />
-            </div>
-
+          <div className="relative flex items-center justify-center gap-3 flex-wrap min-h-[120px] p-4 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-xl">
             {gameState.tableCards.length === 0 && !activeCard ? (
-              <div className="text-xs sm:text-sm text-slate-400 italic py-6 text-center z-10 flex flex-col items-center gap-1.5">
-                <div className="w-8 h-8 rounded-full border border-slate-700 flex items-center justify-center text-slate-500 text-sm">
-                  ✨
-                </div>
+              <div className="text-xs sm:text-sm text-[var(--text-muted)] py-5 text-center flex flex-col items-center gap-2">
+                <Layers className="w-5 h-5 text-[var(--text-muted)]" strokeWidth={1.5} />
                 <span>
                   {isMyTurn
-                    ? 'Chưa có thẻ tri thức nào trên bàn. Bấm [🧮 RÚT THẺ TRI THỨC] để bắt đầu lượt khai mở toán học!'
-                    : `Đang trong lượt của ${opponent?.name || 'Đối thủ'}. Đang tính toán bước đi...`}
+                    ? 'Chưa có thẻ trên bàn. Nhấn Rút thẻ tri thức để bắt đầu lượt'
+                    : `Đang trong lượt của ${opponent?.name || 'đối thủ'}`}
                 </span>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-3 flex-wrap z-10">
+              <div className="flex items-center justify-center gap-3 flex-wrap">
                 {gameState.tableCards.map((c, idx) => (
                   <MathCard
                     key={`${c.id}-${idx}`}
@@ -460,16 +433,15 @@ export const GameArena: React.FC<GameArenaProps> = ({
                     onClick={() => setInspectedTableCard(c)}
                   />
                 ))}
-                {/* Active Pending Card being solved */}
                 {activeCard && (
-                  <div className="relative flex flex-col items-center animate-pulse">
-                    <div className="text-[9px] font-mono text-amber-300 font-bold mb-0.5">
-                      ⚡ THẺ ĐANG MỞ:
-                    </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[11px] font-mono text-[var(--accent-text)]">
+                      Đang mở
+                    </span>
                     <MathCard
                       card={activeCard}
                       variant="mini"
-                      className="ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-950 scale-105"
+                      className="ring-2 ring-[var(--accent)]"
                       onClick={() => setInspectedTableCard(activeCard)}
                     />
                   </div>
@@ -478,63 +450,52 @@ export const GameArena: React.FC<GameArenaProps> = ({
             )}
           </div>
 
-          {/* REALTIME BUST RISK METER & TACTICAL ADVICE */}
           {gameState.tableCards.length > 0 && isMyTurn && !gameState.currentQuestion && (
-            <div className={`mt-3 p-3 px-4 rounded-2xl border-2 shadow-xl transition-all animate-in fade-in duration-200 ${
-              bustRiskPercent >= 40
-                ? 'bg-gradient-to-r from-rose-950/90 via-slate-900 to-rose-950/90 border-rose-500/80 shadow-rose-950/50'
-                : bustRiskPercent >= 20
-                ? 'bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950/90 border-amber-500/80 shadow-amber-950/50'
-                : 'bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-emerald-500/80 shadow-emerald-950/50'
-            }`}>
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="p-3 px-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-3">
-                  {/* Gauge Icon & Percentage */}
-                  <div className={`flex items-center gap-1.5 font-mono font-black text-sm sm:text-base px-3 py-1 rounded-xl border shadow-inner ${
-                    bustRiskPercent >= 40
-                      ? 'bg-rose-950 border-rose-400 text-rose-300 animate-pulse'
-                      : bustRiskPercent >= 20
-                      ? 'bg-amber-950 border-amber-400 text-amber-300'
-                      : 'bg-emerald-950 border-emerald-400 text-emerald-300'
-                  }`}>
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>~{bustRiskPercent}%</span>
+                  <div
+                    className={`inline-flex items-center gap-1.5 font-mono tabular-nums font-semibold px-2.5 py-1 rounded-md border ${
+                      bustRiskPercent >= 40
+                        ? 'bg-[var(--status-danger-subtle)] border-[var(--status-danger)] text-[var(--status-danger)]'
+                        : bustRiskPercent >= 20
+                        ? 'bg-[var(--status-warning-subtle)] border-[var(--status-warning)] text-[var(--status-warning)]'
+                        : 'bg-[var(--status-success-subtle)] border-[var(--status-success)] text-[var(--status-success)]'
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                    <span>{bustRiskPercent}%</span>
                   </div>
 
                   <div>
-                    <div className="font-bold text-slate-100 flex items-center gap-1.5">
-                      <span>RỦI RO BÙM (BUST TRÙNG HỆ)</span>
+                    <div className="font-medium text-[var(--text-primary)]">
+                      Rủi ro trùng phân môn (BUST)
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {tableDomains.size}/10 hệ toán đã xuất hiện trên bàn
+                    <div className="text-xs text-[var(--text-muted)] font-mono tabular-nums">
+                      Đã xuất hiện {tableDomains.size}/10 phân môn trên bàn
                     </div>
                   </div>
                 </div>
 
-                {/* Progress bar and hint */}
-                <div className="flex-1 max-w-xs w-full text-center sm:text-right space-y-1">
-                  <div className="w-full bg-slate-950/80 h-2 rounded-full overflow-hidden border border-slate-700/60">
+                <div className="flex-1 max-w-xs w-full space-y-1.5">
+                  <div className="w-full bg-[var(--bg-inset)] h-1.5 rounded-full overflow-hidden border border-[var(--border-hairline)]">
                     <div
-                      className={`h-full transition-all duration-300 ${
-                        bustRiskPercent >= 40
-                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 animate-pulse'
-                          : bustRiskPercent >= 20
-                          ? 'bg-gradient-to-r from-emerald-500 to-amber-500'
-                          : 'bg-gradient-to-r from-teal-500 to-emerald-500'
-                      }`}
-                      style={{ width: `${bustRiskPercent}%` }}
+                      className="h-full transition-[width] duration-300"
+                      style={{
+                        width: `${bustRiskPercent}%`,
+                        backgroundColor:
+                          bustRiskPercent >= 40
+                            ? 'var(--status-danger)'
+                            : bustRiskPercent >= 20
+                            ? 'var(--status-warning)'
+                            : 'var(--status-success)',
+                      }}
                     />
                   </div>
-                  <div className="text-[11px] text-slate-300 font-medium">
-                    {bustRiskPercent >= 40 ? (
-                      <span className="text-amber-300 font-bold">
-                        ⚠️ Nguy cơ cao! Hãy bấm <strong>[BANK]</strong> để giữ chắc +{you?.currentTurnScore || 0}đ!
-                      </span>
-                    ) : (
-                      <span>
-                        💡 An toàn! Tiếp tục <strong>[RÚT BÀI]</strong> hoặc <strong>[BANK]</strong> tích luỹ.
-                      </span>
-                    )}
+                  <div className="text-xs text-[var(--text-secondary)] sm:text-right font-mono tabular-nums">
+                    {bustRiskPercent >= 40
+                      ? `Rủi ro cao — cân nhắc bấm BANK (+${you?.currentTurnScore || 0}đ)`
+                      : 'Vùng an toàn — có thể rút tiếp hoặc bấm BANK'}
                   </div>
                 </div>
               </div>
@@ -542,111 +503,101 @@ export const GameArena: React.FC<GameArenaProps> = ({
           )}
         </div>
 
-        {/* OPPONENT DELIBERATION BANNER (When it's opponent's turn and no active question) */}
         {!isMyTurn && !gameState.currentQuestion && (
-          <div className="w-full max-w-lg mb-3 p-3 bg-slate-950/85 border border-indigo-600/50 rounded-2xl flex items-center justify-center gap-3 text-xs text-indigo-200 shadow-xl animate-pulse">
-            <span className="text-lg">💭</span>
-            <div className="flex flex-col text-center sm:text-left">
-              <span className="font-bold text-amber-300">{opponent?.name || 'Đối thủ'} đang suy nghĩ nước đi...</span>
-              <span className="text-[11px] text-slate-400">Đang cân nhắc: Rút thêm lá bài mới hay Dừng lại để BANK điểm an toàn</span>
-            </div>
+          <div className="w-full max-w-lg p-3 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl text-center text-xs text-[var(--text-secondary)]">
+            <span className="font-medium text-[var(--text-primary)]">
+              {opponent?.name || 'Đối thủ'}
+            </span>{' '}
+            đang cân nhắc rút thẻ tiếp theo hoặc dừng lượt để lưu điểm
           </div>
         )}
 
-        {/* MATH QUESTION CHAMBER (If a card was drawn and waiting for answer) */}
         {gameState.currentQuestion && (
-          <div className="w-full max-w-xl p-4 sm:p-5 bg-gradient-to-b from-slate-900 to-indigo-950/90 border-2 border-amber-500/70 rounded-2xl shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-200">
-            {/* ACTIVE DRAWN CARD & TÁC DỤNG HEADER WITH 3D FLIP REVEAL */}
+          <div
+            className="w-full max-w-2xl p-4 sm:p-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl space-y-4"
+            style={{ boxShadow: 'var(--shadow-panel)' }}
+          >
             {activeCard && (
-              <div
-                style={{
-                  borderColor: activeCard.elementColor,
-                  boxShadow: `0 0 25px ${activeCard.accentGlow}`,
-                }}
-                className="p-3.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-2 rounded-2xl flex flex-col sm:flex-row items-center gap-4 animate-in fade-in shadow-2xl"
-              >
-                <div className="shrink-0 flex flex-col items-center">
+              <div className="p-3.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-xl flex flex-col sm:flex-row items-center gap-4">
+                <div className="shrink-0">
                   <FlipCardReveal card={activeCard} autoFlip={true} size="md" />
                 </div>
-                <div className="flex-1 text-center sm:text-left min-w-0">
+                <div className="flex-1 text-center sm:text-left min-w-0 space-y-1.5">
                   <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                    <span className="font-bold text-lg text-slate-100 font-cinzel">
+                    <span className="font-semibold text-base text-[var(--text-primary)]">
                       {activeCard.domainNameVi}
                     </span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-black bg-amber-400/20 text-amber-300 border border-amber-500/50">
-                      +{activeCard.pointValue} điểm
+                    <span className="text-xs px-2 py-0.5 rounded font-mono tabular-nums font-medium bg-[var(--accent-subtle)] text-[var(--accent-text)] border border-[var(--accent)]/40">
+                      +{activeCard.pointValue}đ
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono text-purple-300 bg-purple-950/60 border border-purple-800">
+                    <span className="text-[11px] px-2 py-0.5 rounded font-mono text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-hairline)]">
                       {activeCard.rarity}
                     </span>
                   </div>
-                  <div className="text-xs text-amber-200 font-semibold mt-1 flex items-center justify-center sm:justify-start gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>
-                      <strong>Kỹ năng:</strong> {activeCard.skillName}
-                    </span>
+                  <div className="text-xs text-[var(--accent-text)] font-medium flex items-center justify-center sm:justify-start gap-1.5">
+                    <Zap className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                    <span>Kỹ năng: {activeCard.skillName}</span>
                   </div>
-                  <p className="text-[11px] text-slate-300 font-light mt-0.5">
+                  <p className="text-xs text-[var(--text-secondary)]">
                     {activeCard.skillDesc}
                   </p>
-                  <div className="mt-2 text-[10px] text-indigo-300 font-mono flex items-center justify-center sm:justify-start gap-1">
-                    <span>✨ Chạm / Nhấp vào thẻ để lật 3D xem cả 2 mặt</span>
-                  </div>
                 </div>
               </div>
             )}
 
-            {/* Question Header: Category & Countdown Timer */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🧮</span>
-                <span className="text-xs font-bold text-amber-300 font-cinzel uppercase tracking-wider">
-                  CÂU HỎI TOÁN HỌC: {MATH_DOMAINS[gameState.currentQuestion.category]?.nameVi || gameState.currentQuestion.category}
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs font-medium text-[var(--text-secondary)]">
+                Phân môn:{' '}
+                <span className="text-[var(--text-primary)]">
+                  {MATH_DOMAINS[gameState.currentQuestion.category]?.nameVi ||
+                    gameState.currentQuestion.category}
                 </span>
               </div>
 
-              {/* Live Timer */}
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold border ${
-                timeLeft <= 5 ? 'bg-rose-950 border-rose-600 text-rose-400 animate-bounce' : 'bg-slate-950 border-slate-700 text-amber-300'
-              }`}>
-                <Clock className="w-3.5 h-3.5" />
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono tabular-nums font-medium border ${
+                  timeLeft <= 5
+                    ? 'bg-[var(--status-danger-subtle)] border-[var(--status-danger)] text-[var(--status-danger)]'
+                    : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--accent-text)]'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
                 <span>{timeLeft}s</span>
               </div>
             </div>
 
-            {/* Question Prompt & Credible Source */}
-            <div className="py-2.5 text-center bg-slate-950/80 rounded-xl border border-slate-800 px-3">
-              <div className="text-sm sm:text-base font-semibold text-slate-100">
+            <div className="p-4 text-center bg-[var(--bg-inset)] rounded-xl border border-[var(--border-hairline)] space-y-1.5">
+              <div className="text-sm sm:text-base font-medium text-[var(--text-primary)]">
                 {gameState.currentQuestion.question}
               </div>
               {gameState.currentQuestion.sourceName && (
-                <div className="mt-1 flex items-center justify-center gap-1.5 text-[10px] text-sky-300 font-mono">
-                  <span>🌐 Nguồn: {gameState.currentQuestion.sourceName}</span>
+                <div className="inline-flex items-center justify-center gap-1.5 text-xs text-[var(--text-muted)] font-mono">
+                  <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  <span>Nguồn: {gameState.currentQuestion.sourceName}</span>
                 </div>
               )}
             </div>
 
-            {/* If it's YOUR TURN: show interactive answering controls */}
             {isMyTurn ? (
-              <div className="space-y-2.5">
-                {/* 1. Quick Choice Buttons if available */}
-                {gameState.currentQuestion.options && gameState.currentQuestion.options.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {gameState.currentQuestion.options.map((opt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleAnswerSubmit(opt)}
-                        className="py-2 px-3 bg-slate-900 hover:bg-amber-600 hover:text-slate-950 border border-slate-700 hover:border-amber-400 text-slate-100 font-mono font-bold text-sm sm:text-base rounded-xl shadow-md transition-all active:scale-95"
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+              <div className="space-y-3">
+                {gameState.currentQuestion.options &&
+                  gameState.currentQuestion.options.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {gameState.currentQuestion.options.map((opt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleAnswerSubmit(opt)}
+                          className="min-h-10 py-2 px-3 bg-[var(--bg-inset)] hover:bg-[var(--accent)] hover:text-[var(--accent-fg)] border border-[var(--border-strong)] hover:border-[var(--accent)] text-[var(--text-primary)] font-mono tabular-nums font-medium text-sm rounded-lg transition-colors cursor-pointer"
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                {/* 2. Direct Input Form */}
                 <form
-                  onSubmit={(e) => {
+                  onSubmit={e => {
                     e.preventDefault();
                     handleAnswerSubmit(answerInput);
                   }}
@@ -656,147 +607,142 @@ export const GameArena: React.FC<GameArenaProps> = ({
                     type="text"
                     autoFocus
                     value={answerInput}
-                    onChange={(e) => setAnswerInput(e.target.value)}
-                    placeholder="Nhập đáp án số..."
-                    className="flex-1 bg-slate-950 border-2 border-indigo-700 focus:border-amber-400 rounded-xl px-3.5 py-2 text-sm font-mono text-slate-100 text-center focus:outline-none transition-colors"
+                    onChange={e => setAnswerInput(e.target.value)}
+                    placeholder="Nhập đáp án số"
+                    className="flex-1 h-10 bg-[var(--bg-inset)] border border-[var(--border-strong)] focus:border-[var(--accent)] rounded-lg px-3 text-sm font-mono tabular-nums text-[var(--text-primary)] text-center placeholder:text-[var(--text-muted)] focus:outline-none"
                   />
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 uppercase tracking-wider"
+                    className="h-10 px-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg transition-colors cursor-pointer shrink-0"
                   >
-                    Xác Nhận
+                    Xác nhận
                   </button>
                 </form>
               </div>
             ) : (
-              <div className="py-2.5 px-4 bg-slate-950/80 border border-indigo-700/50 rounded-xl flex items-center justify-center gap-2 text-xs font-mono text-indigo-300 animate-pulse">
-                <span className="text-base">🧙‍♂️</span>
-                <span>
-                  {gameState.aiThinkingStatus === 'solving'
-                    ? `Đại Pháp Sư AI đang tập trung tính toán giải đề... (${timeLeft}s)`
-                    : `Đối thủ đang suy nghĩ nước đi... (${timeLeft}s)`}
-                </span>
+              <div className="p-3 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg text-center text-xs font-mono tabular-nums text-[var(--text-secondary)]">
+                {gameState.aiThinkingStatus === 'solving'
+                  ? `AI đang giải câu hỏi (${timeLeft}s)`
+                  : `Đối thủ đang suy nghĩ (${timeLeft}s)`}
               </div>
             )}
           </div>
         )}
 
-        {/* FEEDBACK EXPLANATION ACCORDION (If player answered wrong and has explanation) */}
-        {gameState.lastAnswerResult && !gameState.lastAnswerResult.correct && gameState.lastAnswerResult.explanation && (
-          <div className="w-full max-w-xl mt-2 p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-xs text-rose-200">
-            <div className="font-bold flex items-center justify-between">
-              <span>✗ Giải thích đáp án vừa sai (Đáp án đúng: {gameState.lastAnswerResult.revealedAnswer}):</span>
+        {gameState.lastAnswerResult &&
+          !gameState.lastAnswerResult.correct &&
+          gameState.lastAnswerResult.explanation && (
+            <div className="w-full max-w-2xl p-3 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 rounded-xl text-xs space-y-1">
+              <div className="font-medium text-[var(--status-danger)]">
+                Đáp án đúng: {gameState.lastAnswerResult.revealedAnswer}
+              </div>
+              <div className="text-[var(--text-primary)]">
+                {gameState.lastAnswerResult.explanation}
+              </div>
             </div>
-            <div className="mt-1 text-slate-300 font-light">
-              {gameState.lastAnswerResult.explanation}
-            </div>
-          </div>
-        )}
+          )}
       </div>
 
-      {/* ========================================================= */}
-      {/* 3. PLAYER'S CONTROLS & RUNE BAR                           */}
-      {/* ========================================================= */}
+      {/* 3. CONTROLS & RUNE BAR */}
       <div className="space-y-3">
-        {/* RUNE BAR: 1 Equipped Rune */}
-        <div className="p-2.5 bg-slate-950/85 border border-indigo-900/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-md">
-          <div className="flex items-center gap-2">
-            <div className="text-[11px] font-mono text-purple-300 flex items-center gap-1.5 pl-1">
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-              <span className="font-bold">RUNE BẢO MỆNH (1/1):</span>
-            </div>
+        <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="text-xs font-mono text-[var(--text-secondary)]">
+            Cổ ngữ (1/1)
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             {(() => {
-              const displaySlots = (you?.runes && you.runes.length > 0)
-                ? you.runes
-                : you?.chosenRuneId
-                ? [{
-                    runeId: you.chosenRuneId,
-                    usesLeft: 1,
-                    active: true,
-                    usedThisTurn: you.runeUsedThisTurn,
-                    usedInMatch: you.runeUsedInMatch,
-                  }]
-                : [{
-                    runeId: 'rune_shield',
-                    usesLeft: 1,
-                    active: true,
-                    usedThisTurn: false,
-                    usedInMatch: false,
-                  }];
+              const displaySlots =
+                you?.runes && you.runes.length > 0
+                  ? you.runes
+                  : you?.chosenRuneId
+                  ? [
+                      {
+                        runeId: you.chosenRuneId,
+                        usesLeft: 1,
+                        active: true,
+                        usedThisTurn: you.runeUsedThisTurn,
+                        usedInMatch: you.runeUsedInMatch,
+                      },
+                    ]
+                  : [
+                      {
+                        runeId: 'rune_shield',
+                        usesLeft: 1,
+                        active: true,
+                        usedThisTurn: false,
+                        usedInMatch: false,
+                      },
+                    ];
 
-              return displaySlots.map((slot) => {
+              return displaySlots.map(slot => {
                 const def = ALL_RUNES.find(r => r.id === slot.runeId);
                 if (!def) return null;
                 const isOncePerMatch = def.limitType === 'once_per_match';
                 const isOncePerTurn = def.limitType === 'once_per_turn';
 
                 const isExhausted = isOncePerMatch
-                  ? (slot.usedInMatch || you?.runeUsedInMatch || slot.usesLeft <= 0)
+                  ? slot.usedInMatch || you?.runeUsedInMatch || slot.usesLeft <= 0
                   : isOncePerTurn
-                  ? (slot.usedThisTurn || you?.runeUsedThisTurn || slot.usesLeft <= 0)
+                  ? slot.usedThisTurn || you?.runeUsedThisTurn || slot.usesLeft <= 0
                   : false;
 
-                const isClickablePower = ['rune_swap_question', 'rune_purify', 'rune_shield', 'rune_double'].includes(def.id);
-                const canUse = isMyTurn && !isGameOver && !isExhausted && isClickablePower;
+                const isClickablePower = [
+                  'rune_swap_question',
+                  'rune_purify',
+                  'rune_shield',
+                  'rune_double',
+                ].includes(def.id);
+                const canUse =
+                  isMyTurn && !isGameOver && !isExhausted && isClickablePower;
 
                 return (
-                  <div key={slot.runeId} className="flex items-center gap-2.5 flex-wrap">
+                  <div key={slot.runeId} className="flex items-center gap-3 flex-wrap">
                     <button
+                      type="button"
                       disabled={!canUse}
                       onClick={() => onUseRune(slot.runeId)}
                       title={`${def.name}: ${def.description}`}
-                      style={{ borderColor: !isExhausted ? def.color : '#334155' }}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                      className={`h-8 flex items-center gap-2 px-3 rounded-lg border text-xs font-medium transition-colors ${
                         canUse
-                          ? 'bg-slate-900 hover:scale-105 active:scale-95 text-slate-100 shadow-md ring-1 ring-amber-400/40'
+                          ? 'bg-[var(--bg-raised)] border-[var(--accent)] text-[var(--text-primary)] hover:bg-[var(--accent-subtle)] cursor-pointer'
                           : isExhausted
-                          ? 'bg-slate-950/60 text-slate-500 opacity-60 cursor-not-allowed border-dashed'
-                          : 'bg-slate-950/80 text-slate-300'
+                          ? 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-muted)] opacity-55 cursor-not-allowed border-dashed'
+                          : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)]'
                       }`}
                     >
-                      <span className="shrink-0"><RuneIcon icon={def.icon} className="w-4 h-4" /></span>
-                      <span className="font-bold">{def.name}</span>
+                      <RuneIcon
+                        icon={def.icon}
+                        className="w-4 h-4 shrink-0"
+                        style={{ color: !isExhausted ? def.color : undefined }}
+                      />
+                      <span>{def.name}</span>
 
-                      {/* Status Badge */}
-                      {isOncePerMatch ? (
-                        isExhausted ? (
-                          <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-rose-950/60 border border-rose-900 text-rose-400">
-                            Đã dùng (Hết trận)
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-rose-950 border border-rose-500 text-rose-300 animate-pulse">
-                            1 lần / Trận
-                          </span>
-                        )
-                      ) : isOncePerTurn ? (
-                        isExhausted ? (
-                          <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-amber-950/60 border border-amber-900 text-amber-500/80">
-                            Đã dùng lượt này
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-amber-950 border border-amber-500 text-amber-300">
-                            1 lần / Lượt (Sẵn sàng)
-                          </span>
-                        )
-                      ) : (
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-cyan-950 border border-cyan-500 text-cyan-300">
-                          Nội Tại Toàn Trận
-                        </span>
-                      )}
+                      <span className="px-1.5 py-0.5 text-[11px] font-mono rounded bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-muted)]">
+                        {isOncePerMatch
+                          ? isExhausted
+                            ? 'Đã dùng'
+                            : '1 lần/trận'
+                          : isOncePerTurn
+                          ? isExhausted
+                            ? 'Đã dùng lượt này'
+                            : '1 lần/lượt'
+                          : 'Nội tại'}
+                      </span>
 
                       {canUse && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 uppercase tracking-tight">
-                          Bấm Dùng
+                        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--accent-fg)]">
+                          Kích hoạt
                         </span>
                       )}
                     </button>
 
-                    <div className="text-[11px] text-slate-300 hidden md:block max-w-sm truncate" title={def.description}>
-                      <span className="text-amber-400 font-bold">Tác dụng:</span> {def.description}
-                    </div>
+                    <span
+                      className="text-xs text-[var(--text-secondary)] hidden md:inline max-w-sm truncate"
+                      title={def.description}
+                    >
+                      {def.description}
+                    </span>
                   </div>
                 );
               });
@@ -804,71 +750,70 @@ export const GameArena: React.FC<GameArenaProps> = ({
           </div>
         </div>
 
-        {/* DRAW & BANK MAJOR ACTIONS */}
         <div className="grid grid-cols-2 gap-3 items-center">
-          {/* DRAW BUTTON (Crown Jewel AAA Button) */}
           <DrawButton
             onClick={onDraw}
             disabled={!isMyTurn || isGameOver || !!gameState.currentQuestion}
           />
 
-          {/* BANK BUTTON */}
           <button
+            type="button"
             onClick={onBank}
-            disabled={!isMyTurn || isGameOver || !!gameState.currentQuestion || (you?.currentTurnScore || 0) <= 0}
-            className={`py-4 px-4 rounded-2xl font-cinzel font-black text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-xl transition-all active:scale-[0.98] ${
-              isMyTurn && !gameState.currentQuestion && (you?.currentTurnScore || 0) > 0 && !isGameOver
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-950/50 animate-pulse'
-                : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+            disabled={
+              !isMyTurn ||
+              isGameOver ||
+              !!gameState.currentQuestion ||
+              (you?.currentTurnScore || 0) <= 0
+            }
+            className={`w-full h-12 px-5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-colors ${
+              isMyTurn &&
+              !gameState.currentQuestion &&
+              (you?.currentTurnScore || 0) > 0 &&
+              !isGameOver
+                ? 'bg-[var(--status-success)] hover:opacity-90 text-white cursor-pointer'
+                : 'bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
             }`}
           >
-            <Coins className="w-5 h-5 text-amber-300" />
-            <span>BANK (+{you?.currentTurnScore || 0}đ)</span>
+            <Coins className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+            <span className="font-mono tabular-nums">
+              BANK (+{you?.currentTurnScore || 0}đ)
+            </span>
           </button>
         </div>
 
-        {/* SURRENDER HELPER LINK */}
-        {!isGameOver && (
-          <div className="flex justify-end pt-1">
-            <button
-              onClick={() => setShowSurrenderModal(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-300 transition-colors py-1 px-2.5 rounded-lg hover:bg-rose-950/40 border border-transparent hover:border-rose-900/40 font-medium"
-            >
-              <Flag className="w-3.5 h-3.5 text-rose-400" />
-              <span>Xin Đầu Hàng Ván Này</span>
-            </button>
-          </div>
-        )}
-
-        {/* ========================================================= */}
-        {/* 4. YOU (PLAYER) STATUS BAR                                */}
-        {/* ========================================================= */}
-        <div className={`p-3 rounded-2xl border transition-all ${
-          isMyTurn ? 'bg-amber-950/30 border-amber-500/70 shadow-xl shadow-amber-950/30' : 'bg-slate-900/80 border-slate-800'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-3xl p-1 bg-slate-950 rounded-xl border border-amber-500/40">
-                {you?.avatar || '🧙‍♂️'}
-              </div>
-              <div>
+        {/* 4. PLAYER STATUS BAR */}
+        <div
+          className={`p-3 rounded-xl border transition-colors ${
+            isMyTurn
+              ? 'bg-[var(--bg-raised)] border-[var(--accent)]'
+              : 'bg-[var(--bg-surface)] border-[var(--border-hairline)]'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <AvatarBadge avatar={you?.avatar} size="md" />
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-sm text-amber-200">{you?.name || 'Bạn'}</span>
+                  <span className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                    {you?.name || 'Bạn'}
+                  </span>
                   {isMyTurn && (
-                    <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full uppercase">
-                      Lượt Của Bạn
+                    <span className="px-2 py-0.5 bg-[var(--accent)] text-[var(--accent-fg)] font-medium text-[11px] rounded">
+                      Lượt của bạn
                     </span>
                   )}
-                  {/* Defense & Revive Quick Badges */}
+
                   {(() => {
-                    const myRuneId = you?.chosenRuneId || you?.runes?.[0]?.runeId || 'rune_shield';
+                    const myRuneId =
+                      you?.chosenRuneId || you?.runes?.[0]?.runeId || 'rune_shield';
                     const hasShieldRune = myRuneId === 'rune_shield';
                     const hasReviveRune = myRuneId === 'rune_revive';
                     const hasInsuranceRune = myRuneId === 'rune_insurance';
                     const hasRetryRune = myRuneId === 'rune_retry';
                     const hasImmortalRune = myRuneId === 'rune_immortal';
 
-                    const shieldActive = gameState.activeShield || (hasShieldRune && !you?.runeUsedThisTurn);
+                    const shieldActive =
+                      gameState.activeShield || (hasShieldRune && !you?.runeUsedThisTurn);
                     const reviveActive = hasReviveRune && !you?.runeUsedInMatch;
                     const insuranceActive = hasInsuranceRune && !you?.runeUsedThisTurn;
                     const retryActive = hasRetryRune && !you?.runeUsedThisTurn;
@@ -877,176 +822,199 @@ export const GameArena: React.FC<GameArenaProps> = ({
                     return (
                       <>
                         {shieldActive && (
-                          <span className="px-2 py-0.5 bg-rose-900/90 border border-rose-500 text-rose-200 font-bold text-[10px] rounded-full flex items-center gap-1 shadow-sm" title="Khiên hộ mệnh sẵn sàng chống 1 lần BUST trùng hệ">
-                            <Shield className="w-3 h-3 text-rose-400" /> Khiên Chắn ON
+                          <span className="px-2 py-0.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                            <Shield className="w-3 h-3" strokeWidth={1.5} />
+                            <span>Khiên sẵn sàng</span>
                           </span>
                         )}
-                        {hasShieldRune && you?.runeUsedThisTurn && !gameState.activeShield && (
-                          <span className="px-1.5 py-0.5 bg-slate-800 text-slate-400 text-[9px] rounded-full flex items-center gap-1">
-                            <Shield className="w-2.5 h-2.5 text-slate-500" /> Khiên: Đã dùng
-                          </span>
-                        )}
-
                         {reviveActive && (
-                          <span className="px-2 py-0.5 bg-red-950 border border-red-500 text-red-200 font-bold text-[10px] rounded-full flex items-center gap-1 shadow-sm animate-pulse" title="Ấn hồi sinh bảo mệnh sẵn sàng cứu 50% điểm an toàn (1 lần/trận)">
-                            <ShieldAlert className="w-3 h-3 text-red-400" /> Hồi Sinh ON (1/1)
+                          <span className="px-2 py-0.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                            <ShieldAlert className="w-3 h-3" strokeWidth={1.5} />
+                            <span>Hồi sinh 1/1</span>
                           </span>
                         )}
-                        {hasReviveRune && you?.runeUsedInMatch && (
-                          <span className="px-1.5 py-0.5 bg-slate-800 text-slate-400 text-[9px] rounded-full flex items-center gap-1">
-                            <ShieldAlert className="w-2.5 h-2.5 text-slate-500" /> Hồi Sinh: Đã dùng
-                          </span>
-                        )}
-
                         {insuranceActive && (
-                          <span className="px-2 py-0.5 bg-amber-950 border border-amber-500 text-amber-200 font-bold text-[10px] rounded-full flex items-center gap-1 shadow-sm" title="Khóa bài cao nhất vào kho khi có >= 2 lá">
-                            <Lock className="w-3 h-3 text-amber-400" /> Bảo Hiểm ON
+                          <span className="px-2 py-0.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                            <Lock className="w-3 h-3" strokeWidth={1.5} />
+                            <span>Bảo hiểm sẵn sàng</span>
                           </span>
                         )}
-
                         {retryActive && (
-                          <span className="px-2 py-0.5 bg-pink-950 border border-pink-500 text-pink-200 font-bold text-[10px] rounded-full flex items-center gap-1 shadow-sm" title="Cho phép làm lại câu hỏi toán khi giải sai">
-                            <RotateCcw className="w-3 h-3 text-pink-400" /> Sửa Sai ON
+                          <span className="px-2 py-0.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" strokeWidth={1.5} />
+                            <span>Sửa sai sẵn sàng</span>
                           </span>
                         )}
-
                         {immortalActive && (
-                          <span className="px-2 py-0.5 bg-purple-950 border border-purple-500 text-purple-200 font-bold text-[10px] rounded-full flex items-center gap-1 shadow-sm animate-pulse" title="Hồi sinh với 20 HP bảo mệnh khi tử trận">
-                            <Crown className="w-3 h-3 text-purple-400" /> Bất Tử ON
+                          <span className="px-2 py-0.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                            <Crown className="w-3 h-3" strokeWidth={1.5} />
+                            <span>Bất tử 1/1</span>
                           </span>
                         )}
                       </>
                     );
                   })()}
                 </div>
-                <div className="text-[11px] text-slate-400 flex items-center gap-3 mt-0.5 font-mono">
-                  <span>❤️ HP: {you?.hp || 100}</span>
-                  <span className="text-amber-400 flex items-center gap-1">
-                    ⭐ Kho An Toàn:{' '}
+
+                <div className="text-xs text-[var(--text-secondary)] flex items-center gap-4 mt-0.5 font-mono tabular-nums flex-wrap">
+                  <span className="inline-flex items-center gap-1">
+                    <Heart className="w-3.5 h-3.5 text-[var(--status-danger)]" strokeWidth={1.5} />
+                    <span>HP: {you?.hp || 100}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[var(--accent-text)]">
+                    <span>Kho an toàn:</span>
                     <AnimatedCounter
                       value={you?.safeScore || 0}
                       suffix="đ"
-                      className="text-amber-200 text-sm font-bold"
+                      className="text-[var(--text-primary)] text-sm font-semibold"
                       isHighScore={(you?.safeScore || 0) >= 150}
                     />
                   </span>
                 </div>
+
                 {(() => {
-                  const activeRuneId = you?.chosenRuneId || you?.runes?.[0]?.runeId || 'rune_shield';
+                  const activeRuneId =
+                    you?.chosenRuneId || you?.runes?.[0]?.runeId || 'rune_shield';
                   const rDef = ALL_RUNES.find(r => r.id === activeRuneId);
                   if (!rDef) return null;
                   return (
-                    <div className="text-[11px] text-amber-300 flex items-center gap-1.5 mt-1" title={rDef.persistentEffectDesc || rDef.description}>
-                      <RuneIcon icon={rDef.icon || ''} className="w-3.5 h-3.5 inline-block" />
-                      <span className="font-bold text-amber-400">Nội tại toàn trận: {rDef.name}</span>
-                      <span className="text-slate-300 font-light hidden sm:inline">— {rDef.persistentEffectDesc}</span>
+                    <div
+                      className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mt-1"
+                      title={rDef.persistentEffectDesc || rDef.description}
+                    >
+                      <RuneIcon icon={rDef.icon || ''} className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-medium text-[var(--text-secondary)]">
+                        {rDef.name}
+                      </span>
+                      <span className="hidden sm:inline truncate">
+                        — {rDef.persistentEffectDesc}
+                      </span>
                     </div>
                   );
                 })()}
               </div>
             </div>
 
-            <div className="text-right font-mono">
-              <div className="text-[10px] text-slate-400">Điểm Lượt Này</div>
-              <div className="text-2xl font-black text-amber-400">
+            <div className="text-right font-mono tabular-nums shrink-0">
+              <div className="text-[11px] text-[var(--text-muted)]">Điểm lượt</div>
+              <div className="text-xl font-semibold text-[var(--accent-text)]">
                 <AnimatedCounter value={you?.currentTurnScore || 0} prefix="+" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* QUICK 3-STEP GAMEPLAY GUIDE BAR */}
-        <div className="p-2 sm:p-2.5 bg-slate-900/70 border border-slate-800 rounded-2xl text-[11px] text-slate-300 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-sm">
-          <div className="flex items-center gap-1.5 text-amber-300 font-bold shrink-0">
-            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span>MẸO CÁCH CHƠI:</span>
+        <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl text-xs text-[var(--text-secondary)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[var(--text-primary)] font-medium shrink-0">
+            <BookOpen className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+            <span>Tóm tắt luật</span>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-slate-300 text-center sm:text-left">
-            <span><strong>1. DRAW:</strong> Rút bài & giải đúng để tích lũy điểm lượt này.</span>
-            <span><strong>2. BUST:</strong> Rút trùng hệ đã có trên bàn = Mất trắng điểm lượt!</span>
-            <span><strong>3. BANK:</strong> Cất điểm vào Kho An Toàn trước khi bị BUST.</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <span>1. Rút thẻ & giải toán cộng điểm lượt</span>
+            <span>2. Trùng phân môn = BUST (mất điểm lượt)</span>
+            <span>3. Bấm BANK để lưu điểm an toàn</span>
           </div>
           <button
+            type="button"
             onClick={() => setShowRulesModal(true)}
-            className="text-amber-400 underline font-bold hover:text-amber-300 text-[11px] shrink-0"
+            className="text-[var(--accent-text)] hover:underline font-medium text-xs shrink-0 self-start sm:self-auto cursor-pointer"
           >
-            Đọc Luật Đầy Đủ &raquo;
+            Xem đầy đủ
           </button>
         </div>
       </div>
 
-      {/* HOW TO PLAY MODAL */}
       <HowToPlayModal isOpen={showRulesModal} onClose={() => setShowRulesModal(false)} />
 
-      {/* ========================================================= */}
-      {/* 5. GAME OVER & STUDY STATISTICS MODAL                     */}
-      {/* ========================================================= */}
+      {/* GAME OVER MODAL */}
       {isGameOver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
-          <div className="relative w-full max-w-lg bg-slate-900 border-2 border-amber-500 rounded-3xl shadow-2xl p-6 text-slate-100 overflow-hidden space-y-4">
-            <div className="text-center space-y-1">
-              <div className="text-5xl animate-bounce">
-                {isWinner ? '👑' : '⚔️'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div
+            className="relative w-full max-w-lg bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl p-6 text-[var(--text-primary)] space-y-5"
+            style={{ boxShadow: 'var(--shadow-panel)' }}
+          >
+            <div className="text-center space-y-2">
+              <div
+                className={`w-12 h-12 mx-auto rounded-xl border flex items-center justify-center ${
+                  isWinner
+                    ? 'bg-[var(--accent-subtle)] border-[var(--accent)] text-[var(--accent-text)]'
+                    : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)]'
+                }`}
+              >
+                {isWinner ? (
+                  <Crown className="w-5 h-5" strokeWidth={1.5} />
+                ) : (
+                  <Swords className="w-5 h-5" strokeWidth={1.5} />
+                )}
               </div>
-              <h2 className="font-cinzel text-2xl sm:text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500">
-                {isWinner ? 'CHIẾN THẮNG HUY HOÀNG!' : 'TRẬN ĐẤU KẾT THÚC'}
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
+                {isWinner ? 'Chiến thắng trận đấu' : 'Trận đấu kết thúc'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-secondary)]">
                 {isWinner
-                  ? `Chúc mừng! Bạn đã đạt ${you?.safeScore} điểm mục tiêu trước đối thủ!`
-                  : `Đối thủ đã chạm mốc điểm chiến thắng trước.`}
+                  ? `Bạn đã đạt ${you?.safeScore} điểm mục tiêu trước đối thủ`
+                  : 'Đối thủ đã chạm mốc điểm chiến thắng trước'}
               </p>
             </div>
 
-            {/* Study Statistics Breakdown */}
-            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-              <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-cinzel flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-400" />
-                <span>BÁO CÁO THỐNG KÊ HỌC TẬP</span>
+            <div className="p-4 bg-[var(--bg-inset)] rounded-xl border border-[var(--border-hairline)] space-y-3">
+              <h4 className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                <span>Thống kê học tập</span>
               </h4>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
-                <div className="p-2 bg-slate-900 rounded-xl">
-                  <div className="text-[10px] text-slate-400">Điểm Đạt Được</div>
-                  <div className="text-lg font-black text-amber-400">{you?.safeScore || 0}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono tabular-nums">
+                <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-lg">
+                  <div className="text-[11px] text-[var(--text-muted)]">Điểm đạt</div>
+                  <div className="text-lg font-semibold text-[var(--accent-text)]">
+                    {you?.safeScore || 0}
+                  </div>
                 </div>
 
-                <div className="p-2 bg-slate-900 rounded-xl">
-                  <div className="text-[10px] text-slate-400">Độ Chính Xác</div>
-                  <div className="text-lg font-black text-emerald-400">
+                <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-lg">
+                  <div className="text-[11px] text-[var(--text-muted)]">Chính xác</div>
+                  <div className="text-lg font-semibold text-[var(--status-success)]">
                     {(() => {
-                      const total = (you?.stats.correctCount || 0) + (you?.stats.wrongCount || 0);
-                      return total > 0 ? Math.round(((you?.stats.correctCount || 0) / total) * 100) : 0;
-                    })()}%
+                      const total =
+                        (you?.stats.correctCount || 0) + (you?.stats.wrongCount || 0);
+                      return total > 0
+                        ? Math.round(((you?.stats.correctCount || 0) / total) * 100)
+                        : 0;
+                    })()}
+                    %
                   </div>
                 </div>
 
-                <div className="p-2 bg-slate-900 rounded-xl">
-                  <div className="text-[10px] text-slate-400">Câu Đúng</div>
-                  <div className="text-lg font-black text-indigo-300">
-                    {you?.stats.correctCount || 0}/{(you?.stats.correctCount || 0) + (you?.stats.wrongCount || 0)}
+                <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-lg">
+                  <div className="text-[11px] text-[var(--text-muted)]">Câu đúng</div>
+                  <div className="text-lg font-semibold text-[var(--text-primary)]">
+                    {you?.stats.correctCount || 0}/
+                    {(you?.stats.correctCount || 0) + (you?.stats.wrongCount || 0)}
                   </div>
                 </div>
 
-                <div className="p-2 bg-slate-900 rounded-xl">
-                  <div className="text-[10px] text-slate-400">Số Lần Bust</div>
-                  <div className="text-lg font-black text-rose-400">{you?.stats.bustCount || 0}</div>
+                <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-lg">
+                  <div className="text-[11px] text-[var(--text-muted)]">Số lần BUST</div>
+                  <div className="text-lg font-semibold text-[var(--status-danger)]">
+                    {you?.stats.bustCount || 0}
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Kinh nghiệm nhận được:</span>
-                <span className="font-mono font-bold text-amber-300">
-                  +{isWinner ? 100 : 40} XP (+{(you?.stats.correctCount || 0) * 5} XP Toán)
+              <div className="pt-2 border-t border-[var(--border-hairline)] flex items-center justify-between text-xs">
+                <span className="text-[var(--text-secondary)]">Kinh nghiệm nhận được</span>
+                <span className="font-mono tabular-nums font-medium text-[var(--accent-text)]">
+                  +{isWinner ? 100 : 40} XP (+{(you?.stats.correctCount || 0) * 5} XP toán)
                 </span>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onExit}
-              className="w-full py-3 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider"
+              className="w-full h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-sm rounded-lg transition-colors cursor-pointer"
             >
-              Về Màn Hình Chính
+              Về màn hình chính
             </button>
           </div>
         </div>
@@ -1054,27 +1022,34 @@ export const GameArena: React.FC<GameArenaProps> = ({
 
       {/* INSPECTED TABLE CARD MODAL */}
       {inspectedTableCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={() => setInspectedTableCard(null)}
+        >
+          <div
+            className="relative w-full max-w-md flex flex-col items-center gap-4"
+            onClick={e => e.stopPropagation()}
+          >
             <button
+              type="button"
               onClick={() => setInspectedTableCard(null)}
-              className="absolute -top-3 -right-3 z-20 w-9 h-9 bg-slate-900 border-2 border-slate-700 hover:border-amber-400 text-slate-300 hover:text-white rounded-full flex items-center justify-center shadow-xl transition-all"
+              aria-label="Đóng chi tiết thẻ"
+              className="self-end w-8 h-8 bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:bg-[var(--bg-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg flex items-center justify-center transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" strokeWidth={1.5} />
             </button>
-            <div className="flex flex-col items-center">
-              <FlipCardReveal card={inspectedTableCard} autoFlip={false} size="lg" />
-              <div className="mt-3 text-center space-y-2">
-                <p className="text-xs text-amber-300 font-mono flex items-center justify-center gap-1.5">
-                  <span>🔄 Chạm / Nhấp trực tiếp vào thẻ để lật xem cả 2 mặt</span>
-                </p>
-                <button
-                  onClick={() => setInspectedTableCard(null)}
-                  className="px-6 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold text-xs rounded-xl uppercase tracking-wider transition-all shadow-md active:scale-95"
-                >
-                  Đóng Chi Tiết
-                </button>
-              </div>
+            <FlipCardReveal card={inspectedTableCard} autoFlip={false} size="lg" />
+            <div className="text-center space-y-2">
+              <p className="text-xs text-[var(--text-secondary)]">
+                Chạm vào thẻ để lật xem hai mặt
+              </p>
+              <button
+                type="button"
+                onClick={() => setInspectedTableCard(null)}
+                className="h-9 px-5 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-strong)] text-[var(--text-primary)] font-medium text-xs rounded-lg transition-colors cursor-pointer"
+              >
+                Đóng chi tiết
+              </button>
             </div>
           </div>
         </div>
@@ -1082,38 +1057,50 @@ export const GameArena: React.FC<GameArenaProps> = ({
 
       {/* SURRENDER CONFIRMATION MODAL */}
       {showSurrenderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-rose-600/50 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl shadow-rose-950/50 space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-inner">
-              <Flag className="w-8 h-8 animate-pulse text-rose-400" />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65"
+          onClick={() => setShowSurrenderModal(false)}
+        >
+          <div
+            className="bg-[var(--bg-surface)] border border-[var(--status-danger)] rounded-2xl max-w-md w-full p-6 text-center space-y-4"
+            style={{ boxShadow: 'var(--shadow-panel)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-11 h-11 mx-auto rounded-xl bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 flex items-center justify-center text-[var(--status-danger)]">
+              <Flag className="w-5 h-5" strokeWidth={1.5} />
             </div>
 
-            <div>
-              <h3 className="font-cinzel text-xl font-bold text-rose-200">
-                XÁC NHẬN ĐẦU HÀNG?
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                Xác nhận đầu hàng
               </h3>
-              <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                Bạn có chắc chắn muốn giương cờ trắng đầu hàng ván đấu này không? 
-                Chiến thắng sẽ thuộc về <strong className="text-amber-300">{opponent?.name || 'Đối thủ'}</strong> và trận đấu sẽ kết thúc ngay lập tức.
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                Bạn có chắc muốn đầu hàng ván này? Chiến thắng sẽ thuộc về{' '}
+                <span className="font-medium text-[var(--text-primary)]">
+                  {opponent?.name || 'đối thủ'}
+                </span>{' '}
+                và trận đấu kết thúc ngay lập tức
               </p>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setShowSurrenderModal(false);
                   onSurrender();
                 }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white font-bold text-sm shadow-lg shadow-rose-950/50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                className="flex-1 h-10 px-4 rounded-lg bg-[var(--status-danger)] hover:opacity-90 text-white font-medium text-xs inline-flex items-center justify-center gap-1.5 transition-opacity cursor-pointer"
               >
-                <Flag className="w-4 h-4" />
-                <span>Chấp Nhận Đầu Hàng</span>
+                <Flag className="w-4 h-4" strokeWidth={1.5} />
+                <span>Chấp nhận đầu hàng</span>
               </button>
               <button
+                type="button"
                 onClick={() => setShowSurrenderModal(false)}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-all active:scale-95"
+                className="flex-1 h-10 px-4 rounded-lg bg-[var(--bg-inset)] hover:bg-[var(--bg-raised)] text-[var(--text-primary)] font-medium text-xs border border-[var(--border-hairline)] transition-colors cursor-pointer"
               >
-                Hủy / Tiếp Tục Quyết Đấu
+                Tiếp tục đấu
               </button>
             </div>
           </div>

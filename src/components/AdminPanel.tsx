@@ -1,7 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Shield, Plus, Trash2, Database, Users, BookOpen, CheckCircle, RefreshCw, Lock, KeyRound, Settings, Crown, UserX, XCircle, Link2, Landmark, RotateCcw, Sparkles, Globe, ExternalLink } from 'lucide-react';
-import { MathLevel, MathCategory, Question, SiteSettings, PremiumRequest, PremiumPlan } from '../../shared/types.ts';
+import {
+  ArrowLeft,
+  Shield,
+  Plus,
+  Trash2,
+  Users,
+  BookOpen,
+  CheckCircle,
+  RefreshCw,
+  Lock,
+  KeyRound,
+  Settings,
+  Crown,
+  UserX,
+  XCircle,
+  Link2,
+  Landmark,
+  RotateCcw,
+  Sparkles,
+  Globe,
+  ExternalLink,
+  BarChart3,
+  Zap,
+} from 'lucide-react';
+import {
+  MathLevel,
+  MathCategory,
+  Question,
+  SiteSettings,
+  PremiumRequest,
+  PremiumPlan,
+} from '../../shared/types.ts';
 import { MATH_DOMAINS } from '../../shared/cards.ts';
+import { AvatarBadge } from './AvatarBadge.tsx';
 
 function formatVnd(n: number) {
   return (n || 0).toLocaleString('vi-VN') + 'đ';
@@ -14,12 +45,16 @@ interface AdminPanelProps {
 
 const ADMIN_KEY_STORAGE = 'mathrune_admin_key';
 
-const isUserGuest = (u: any) => !!(u.isGuest || u.role === 'guest' || u.accountType === 'guest');
-const isUserPro = (u: any) => !!u.isPremium && (!u.premiumExpiresAt || new Date(u.premiumExpiresAt).getTime() > Date.now());
+const isUserGuest = (u: any) =>
+  !!(u.isGuest || u.role === 'guest' || u.accountType === 'guest');
+const isUserPro = (u: any) =>
+  !!u.isPremium &&
+  (!u.premiumExpiresAt || new Date(u.premiumExpiresAt).getTime() > Date.now());
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
-  // ------- Password gate -------
-  const [adminKey, setAdminKey] = useState<string>(() => sessionStorage.getItem(ADMIN_KEY_STORAGE) || '');
+  const [adminKey, setAdminKey] = useState<string>(
+    () => sessionStorage.getItem(ADMIN_KEY_STORAGE) || ''
+  );
   const [authed, setAuthed] = useState(false);
   const [pwInput, setPwInput] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
@@ -41,17 +76,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       }
       if (!opts?.silent) {
         const d = await res.json().catch(() => ({}));
-        setAuthError(d.error || 'Sai mật khẩu quản trị.');
+        setAuthError(d.error || 'Sai mật khẩu quản trị');
       }
       sessionStorage.removeItem(ADMIN_KEY_STORAGE);
       return false;
-    } catch (e) {
-      if (!opts?.silent) setAuthError('Không kết nối được máy chủ.');
+    } catch {
+      if (!opts?.silent) setAuthError('Không kết nối được máy chủ');
       return false;
     }
   };
 
-  // Try to silently re-auth with a key saved earlier this session
   useEffect(() => {
     if (adminKey) verifyKey(adminKey, { silent: true });
   }, []);
@@ -66,35 +100,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
   const adminHeaders = { 'Content-Type': 'application/json', 'x-admin-key': adminKey };
 
-  // ------- Panel state (only used once authed) -------
   const [stats, setStats] = useState<any>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'stats' | 'questions' | 'users' | 'premium' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<
+    'stats' | 'questions' | 'users' | 'premium' | 'settings'
+  >('stats');
 
-  // Premium requests state
   const [premiumRequests, setPremiumRequests] = useState<PremiumRequest[]>([]);
   const [premiumActionMsg, setPremiumActionMsg] = useState<string | null>(null);
 
-  // Settings state
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [settingsForm, setSettingsForm] = useState<Partial<SiteSettings>>({});
   const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetAllTimeLoading, setResetAllTimeLoading] = useState(false);
+  const [confirmResetWeekly, setConfirmResetWeekly] = useState(false);
+  const [confirmResetAllTime, setConfirmResetAllTime] = useState(false);
 
-  // User management state: filtering, search, and Pro package controls
   const [userFilter, setUserFilter] = useState<'all' | 'registered' | 'guest' | 'pro'>('all');
   const [userSearch, setUserSearch] = useState('');
   const [customGrantUsername, setCustomGrantUsername] = useState('');
   const [customGrantDays, setCustomGrantDays] = useState<number>(30);
-  const [customGrantPlan, setCustomGrantPlan] = useState<'monthly' | 'solution'>('monthly');
+  const [customGrantPlan] = useState<'monthly' | 'solution'>('monthly');
   const [grantActionMsg, setGrantActionMsg] = useState<string | null>(null);
   const [grantActionLoading, setGrantActionLoading] = useState(false);
+  const [usersMsg, setUsersMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null);
+  const [confirmRevokeUserId, setConfirmRevokeUserId] = useState<string | null>(null);
+  const [confirmDeleteAllGuests, setConfirmDeleteAllGuests] = useState(false);
+  const [confirmDeleteQId, setConfirmDeleteQId] = useState<string | null>(null);
 
-  // New question form state
   const [qText, setQText] = useState('');
-  const [qFormula, setQFormula] = useState('');
   const [qAnswer, setQAnswer] = useState('');
   const [qOptions, setQOptions] = useState('');
   const [qExplanation, setQExplanation] = useState('');
@@ -102,16 +140,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [qLevel, setQLevel] = useState<MathLevel>('THCS');
   const [qTimeLimit, setQTimeLimit] = useState(15);
   const [formMsg, setFormMsg] = useState<string | null>(null);
-  // AI Question Generator state (từ nguồn web toán học uy tín)
+
   const [aiTopic, setAiTopic] = useState('');
   const [aiCategory, setAiCategory] = useState<MathCategory>('NGUYEN_TO');
   const [aiLevel, setAiLevel] = useState<MathLevel>('THCS');
-  const [aiPreferredSource, setAiPreferredSource] = useState('VietJack Chuyên Đề Toán (vietjack.com)');
+  const [aiPreferredSource, setAiPreferredSource] = useState(
+    'VietJack Chuyên Đề Toán (vietjack.com)'
+  );
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGeneratedQuestion, setAiGeneratedQuestion] = useState<Question | null>(null);
   const [aiSuccessMsg, setAiSuccessMsg] = useState<string | null>(null);
   const [aiErrorMsg, setAiErrorMsg] = useState<string | null>(null);
   const [aiSavingToDb, setAiSavingToDb] = useState(false);
+
+  const showUsersStatus = (type: 'ok' | 'err', text: string) => {
+    setUsersMsg({ type, text });
+    setTimeout(() => setUsersMsg(null), 4000);
+  };
 
   const fetchStats = () => {
     fetch('/api/admin/stats', { headers: adminHeaders })
@@ -163,12 +208,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const handleAddQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!qText.trim() || !qAnswer.trim()) {
-      setFormMsg('Vui lòng nhập câu hỏi và đáp án.');
+      setFormMsg('Vui lòng nhập nội dung câu hỏi và đáp án');
       return;
     }
 
     const optionsArray = qOptions.trim()
-      ? qOptions.split(',').map(s => s.trim()).filter(Boolean)
+      ? qOptions
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
       : undefined;
 
     try {
@@ -177,7 +225,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         headers: adminHeaders,
         body: JSON.stringify({
           question: qText,
-          formula: qFormula || undefined,
           answer: qAnswer,
           options: optionsArray,
           explanation: qExplanation,
@@ -188,9 +235,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       });
 
       if (res.ok) {
-        setFormMsg('✓ Đã thêm câu hỏi vào Ngân Hàng Đề!');
+        setFormMsg('Đã thêm câu hỏi vào ngân hàng đề');
         setQText('');
-        setQFormula('');
         setQAnswer('');
         setQOptions('');
         setQExplanation('');
@@ -206,7 +252,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // Sinh câu hỏi thông minh bằng AI từ nguồn web toán học uy tín
   const handleGenerateAiQuestion = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAiGenerating(true);
@@ -225,18 +270,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể sinh câu hỏi AI.');
+        throw new Error(data.error || 'Không thể sinh câu hỏi AI');
       }
       setAiGeneratedQuestion(data.question);
-      setAiSuccessMsg('✨ Đã sinh thành công 01 câu hỏi toán học uy tín có thẩm định!');
+      setAiSuccessMsg('Đã sinh thành công 1 câu hỏi toán học từ nguồn tham chiếu');
     } catch (err: any) {
-      setAiErrorMsg(err?.message || 'Lỗi khi sinh câu hỏi AI.');
+      setAiErrorMsg(err?.message || 'Lỗi khi sinh câu hỏi AI');
     } finally {
       setAiGenerating(false);
     }
   };
 
-  // Lưu câu hỏi vừa sinh bằng AI vào ngân hàng đề thi đấu
   const handleSaveAiQuestionToBank = async () => {
     if (!aiGeneratedQuestion) return;
     setAiSavingToDb(true);
@@ -250,23 +294,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Lỗi lưu câu hỏi vào ngân hàng.');
+        throw new Error(data.error || 'Lỗi lưu câu hỏi vào ngân hàng');
       }
-      setAiSuccessMsg('🎉 Đã thêm thành công câu hỏi vào Ngân Hàng Đề thi đấu!');
+      setAiSuccessMsg('Đã lưu câu hỏi vào ngân hàng đề thi đấu');
       setAiGeneratedQuestion(null);
       fetchQuestions();
       fetchStats();
     } catch (err: any) {
-      setAiErrorMsg(err?.message || 'Lỗi lưu câu hỏi.');
+      setAiErrorMsg(err?.message || 'Lỗi lưu câu hỏi');
     } finally {
       setAiSavingToDb(false);
     }
   };
 
   const handleDeleteQuestion = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) return;
     try {
-      await fetch(`/api/admin/questions/${id}`, { method: 'DELETE', headers: adminHeaders });
+      await fetch(`/api/admin/questions/${id}`, {
+        method: 'DELETE',
+        headers: adminHeaders,
+      });
+      setConfirmDeleteQId(null);
       fetchQuestions();
       fetchStats();
     } catch (e) {
@@ -274,44 +321,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // ------- Xóa tài khoản người dùng (chỉ 1 tài khoản Admin duy nhất, không thể xóa) -------
   const handleDeleteUser = async (u: any) => {
-    if (!confirm(`Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản "${u.username}"? Toàn bộ hồ sơ, lịch sử trận đấu sẽ bị mất và không thể hoàn tác!`)) return;
     try {
-      const res = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE', headers: adminHeaders });
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: 'DELETE',
+        headers: adminHeaders,
+      });
       const d = await res.json();
+      setConfirmDeleteUserId(null);
       if (res.ok) {
+        showUsersStatus('ok', `Đã xóa tài khoản ${u.username}`);
         fetchUsers();
         fetchStats();
       } else {
-        alert(d.error || 'Không thể xóa tài khoản.');
+        showUsersStatus('err', d.error || 'Không thể xóa tài khoản');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      showUsersStatus('err', 'Lỗi kết nối máy chủ');
     }
   };
 
-  // ------- Xóa toàn bộ tài khoản Chơi Nhanh (Khách) -------
   const handleDeleteAllGuests = async () => {
-    const currentGuests = users.filter(u => isUserGuest(u));
-    if (!confirm(`Bạn có chắc chắn muốn XÓA TẤT CẢ ${currentGuests.length} tài khoản Chơi Nhanh (Khách)? Toàn bộ dữ liệu tạm của các tài khoản này sẽ được dọn sạch hoàn toàn!`)) return;
     try {
-      const res = await fetch('/api/admin/users/guests', { method: 'DELETE', headers: adminHeaders });
+      const res = await fetch('/api/admin/users/guests', {
+        method: 'DELETE',
+        headers: adminHeaders,
+      });
       const d = await res.json();
+      setConfirmDeleteAllGuests(false);
       if (res.ok) {
-        alert(d.message || `Đã xóa thành công ${d.count} tài khoản Chơi Nhanh!`);
+        showUsersStatus('ok', d.message || `Đã xóa ${d.count} tài khoản khách`);
         fetchUsers();
         fetchStats();
       } else {
-        alert(d.error || 'Lỗi xóa tài khoản Chơi Nhanh.');
+        showUsersStatus('err', d.error || 'Lỗi xóa tài khoản khách');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      showUsersStatus('err', 'Lỗi kết nối máy chủ');
     }
   };
 
-  // ------- Cấp / Thu hồi / Gia hạn Gói PRO thủ công (bằng ID hoặc Tên tài khoản) -------
-  const handleGrantPremium = async (userId: string, plan: PremiumPlan = 'monthly', days: number = 30) => {
+  const handleGrantPremium = async (
+    userId: string,
+    plan: PremiumPlan = 'monthly',
+    days: number = 30
+  ) => {
     try {
       const res = await fetch('/api/admin/premium/grant', {
         method: 'POST',
@@ -320,19 +374,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message || `Đã gia hạn thành công gói PRO thêm ${days} ngày!`);
+        showUsersStatus('ok', data.message || `Đã gia hạn gói PRO thêm ${days} ngày`);
         fetchUsers();
         fetchStats();
       } else {
-        alert(data.error || 'Lỗi cấp gói PRO.');
+        showUsersStatus('err', data.error || 'Lỗi cấp gói PRO');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      showUsersStatus('err', 'Lỗi kết nối máy chủ');
     }
   };
 
   const handleRevokePremium = async (userId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn gỡ bỏ gói PRO của tài khoản này không?')) return;
     try {
       const res = await fetch('/api/admin/premium/revoke', {
         method: 'POST',
@@ -340,15 +393,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         body: JSON.stringify({ userId }),
       });
       const data = await res.json();
+      setConfirmRevokeUserId(null);
       if (res.ok) {
-        alert(data.message || 'Đã gỡ gói PRO thành công!');
+        showUsersStatus('ok', data.message || 'Đã gỡ gói PRO');
         fetchUsers();
         fetchStats();
       } else {
-        alert(data.error || 'Lỗi gỡ gói PRO.');
+        showUsersStatus('err', data.error || 'Lỗi gỡ gói PRO');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
+      showUsersStatus('err', 'Lỗi kết nối máy chủ');
     }
   };
 
@@ -369,30 +423,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        setGrantActionMsg(`✓ ${data.message || 'Đã gia hạn gói PRO thành công!'}`);
+        setGrantActionMsg(data.message || 'Đã gia hạn gói PRO thành công');
         setCustomGrantUsername('');
         fetchUsers();
         fetchStats();
       } else {
-        setGrantActionMsg(data.error || 'Lỗi gia hạn gói PRO.');
+        setGrantActionMsg(data.error || 'Lỗi gia hạn gói PRO');
       }
     } catch {
-      setGrantActionMsg('Lỗi kết nối máy chủ.');
+      setGrantActionMsg('Lỗi kết nối máy chủ');
     } finally {
       setGrantActionLoading(false);
       setTimeout(() => setGrantActionMsg(null), 5000);
     }
   };
 
-  // ------- Duyệt / Từ chối yêu cầu mua gói Premium -------
   const handleResolvePremiumRequest = async (id: string, approve: boolean) => {
     try {
-      const res = await fetch(`/api/admin/premium/requests/${id}/${approve ? 'approve' : 'reject'}`, {
-        method: 'POST',
-        headers: adminHeaders,
-      });
+      const res = await fetch(
+        `/api/admin/premium/requests/${id}/${approve ? 'approve' : 'reject'}`,
+        {
+          method: 'POST',
+          headers: adminHeaders,
+        }
+      );
       if (res.ok) {
-        setPremiumActionMsg(approve ? '✓ Đã duyệt và kích hoạt Premium cho người dùng!' : 'Đã từ chối yêu cầu.');
+        setPremiumActionMsg(
+          approve ? 'Đã duyệt và kích hoạt Premium' : 'Đã từ chối yêu cầu'
+        );
         fetchPremiumRequests();
         fetchUsers();
         fetchStats();
@@ -403,7 +461,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // ------- Cài đặt hệ thống: link hướng dẫn, giá gói, thông tin chuyển khoản -------
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsSaving(true);
@@ -417,7 +474,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       const data = await res.json();
       if (res.ok) {
         setSettings(data);
-        setSettingsMsg('✓ Đã lưu cài đặt!');
+        setSettingsMsg('Đã lưu cài đặt hệ thống');
       } else {
         setSettingsMsg(`Lỗi: ${data.error}`);
       }
@@ -429,16 +486,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // ------- Reset Bảng Xếp Hạng tuần (điểm về 0đ) -------
   const handleResetLeaderboard = async () => {
-    if (!confirm('Xóa Bảng Xếp Hạng Tuần và đưa điểm của TẤT CẢ người chơi về 0đ? (Điểm kỷ lục mọi thời đại vẫn được giữ nguyên)')) return;
     setResetLoading(true);
     try {
-      const res = await fetch('/api/admin/leaderboard/reset', { method: 'POST', headers: adminHeaders });
+      const res = await fetch('/api/admin/leaderboard/reset', {
+        method: 'POST',
+        headers: adminHeaders,
+      });
       const d = await res.json();
+      setConfirmResetWeekly(false);
       if (res.ok) {
-        setSettings(prev => prev ? { ...prev, lastLeaderboardReset: d.settings.lastLeaderboardReset } : prev);
-        setSettingsMsg('✓ Đã reset Bảng Xếp Hạng Tuần về 0đ!');
+        setSettings(prev =>
+          prev ? { ...prev, lastLeaderboardReset: d.settings.lastLeaderboardReset } : prev
+        );
+        setSettingsMsg('Đã đặt lại bảng xếp hạng tuần về 0đ');
         setTimeout(() => setSettingsMsg(null), 3000);
       }
     } catch (e) {
@@ -448,15 +509,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // ------- Reset Bảng Xếp Hạng TOÀN THỜI GIAN (điểm kỷ lục mọi thời đại về 0đ) -------
-  const [resetAllTimeLoading, setResetAllTimeLoading] = useState(false);
   const handleResetAllTimeLeaderboard = async () => {
-    if (!confirm('Xóa Bảng Xếp Hạng TOÀN THỜI GIAN và đưa điểm kỷ lục mọi thời đại của TẤT CẢ người chơi về 0đ? Thao tác này KHÔNG THỂ hoàn tác!')) return;
     setResetAllTimeLoading(true);
     try {
-      const res = await fetch('/api/admin/leaderboard/reset-alltime', { method: 'POST', headers: adminHeaders });
+      const res = await fetch('/api/admin/leaderboard/reset-alltime', {
+        method: 'POST',
+        headers: adminHeaders,
+      });
+      setConfirmResetAllTime(false);
       if (res.ok) {
-        setSettingsMsg('✓ Đã reset Bảng Xếp Hạng Toàn Thời Gian về 0đ!');
+        setSettingsMsg('Đã đặt lại bảng xếp hạng toàn thời gian về 0đ');
         setTimeout(() => setSettingsMsg(null), 3000);
       }
     } catch (e) {
@@ -466,43 +528,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
-  // ------- Locked screen: shown until the correct admin password is entered -------
   if (!authed) {
     return (
-      <div className="max-w-md mx-auto px-4 py-10">
+      <div className="max-w-md mx-auto px-4 py-10 space-y-6">
         <button
+          type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay Lại Sảnh Chính</span>
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+          <span>Quay lại sảnh chính</span>
         </button>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-950/60 border border-amber-700/40 text-amber-400 shadow-inner">
-            <Lock className="w-6 h-6" />
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[var(--bg-inset)] border border-[var(--border-hairline)] flex items-center justify-center text-[var(--accent-text)] shrink-0">
+              <Lock className="w-4 h-4" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                Khu vực quản trị
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Nhập mật khẩu quản trị viên để tiếp tục
+              </p>
+            </div>
           </div>
-          <h3 className="font-cinzel text-lg font-black text-amber-100">KHU VỰC QUẢN TRỊ</h3>
-          <p className="text-xs text-slate-400">
-            Nhập mật khẩu Admin để tiếp tục. Khu vực này không dành cho khách hay người chơi thường.
-          </p>
 
-          <form onSubmit={handleAuthSubmit} className="space-y-3 text-left">
+          <form onSubmit={handleAuthSubmit} className="space-y-3">
             <div className="relative">
-              <KeyRound className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+              <KeyRound
+                className="w-4 h-4 absolute left-3 top-2.5 text-[var(--text-muted)]"
+                strokeWidth={1.5}
+              />
               <input
                 type="password"
                 autoFocus
                 required
                 value={pwInput}
                 onChange={e => setPwInput(e.target.value)}
-                placeholder="Mật khẩu Admin"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 transition-colors"
+                placeholder="Mật khẩu quản trị"
+                className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] focus:border-[var(--accent)] rounded-lg pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
               />
             </div>
 
             {authError && (
-              <div className="p-2.5 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">
+              <div className="p-2.5 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)] text-[var(--status-danger)] text-xs rounded-lg">
                 {authError}
               </div>
             )}
@@ -510,9 +581,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              className="w-full h-10 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-sm rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
-              {authLoading ? 'Đang kiểm tra...' : 'Mở Khóa'}
+              {authLoading ? 'Đang kiểm tra...' : 'Mở khóa quản trị'}
             </button>
           </form>
         </div>
@@ -520,236 +591,254 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     );
   }
 
+  const adminTabs = [
+    { id: 'stats', label: 'Tổng quan', icon: BarChart3 },
+    { id: 'questions', label: 'Ngân hàng đề', icon: BookOpen },
+    { id: 'users', label: 'Người dùng', icon: Users },
+    { id: 'premium', label: 'Gói Premium', icon: Crown },
+    { id: 'settings', label: 'Cài đặt', icon: Settings },
+  ] as const;
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
+          type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay Lại Sảnh Chính</span>
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+          <span>Quay lại sảnh chính</span>
         </button>
 
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-950/40 border border-amber-800/40 rounded-full text-xs font-mono text-amber-300">
-          <Shield className="w-3.5 h-3.5 text-amber-400" />
-          <span>Trang Quản Trị Hệ Thống (Admin Panel)</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-md text-xs text-[var(--text-secondary)]">
+          <Shield className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+          <span>Bảng điều khiển quản trị</span>
         </div>
       </div>
 
-      <div className="text-center space-y-1">
-        <h2 className="font-cinzel text-2xl sm:text-3xl font-black text-amber-200">
-          QUẢN TRỊ VIÊN & HỆ THỐNG
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">
+          Quản trị hệ thống Math Rune
         </h2>
-        <p className="text-xs text-slate-400">
-          Giám sát tài nguyên máy chủ, quản lý ngân hàng câu hỏi toán học và danh sách pháp sư.
+        <p className="text-sm text-[var(--text-secondary)]">
+          Theo dõi tài nguyên máy chủ, ngân hàng câu hỏi, người dùng và cấu hình thanh toán
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {[
-          { id: 'stats', label: '📊 Tổng Quan Máy Chủ' },
-          { id: 'questions', label: '🧮 Ngân Hàng Câu Hỏi' },
-          { id: 'users', label: '👥 Người Dùng' },
-          { id: 'premium', label: '💎 Gói Premium' },
-          { id: 'settings', label: '⚙️ Cài Đặt' },
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id as any)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
-              activeTab === t.id
-                ? 'bg-amber-600 border-amber-400 text-slate-950 shadow-md'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2">
+        {adminTabs.map(t => {
+          const Icon = t.icon;
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={`h-9 px-3.5 text-xs font-medium rounded-lg border inline-flex items-center gap-2 transition-colors cursor-pointer ${
+                active
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]'
+              }`}
+            >
+              <Icon className="w-4 h-4" strokeWidth={1.5} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* TAB 1: SYSTEM STATS */}
+      {/* TAB 1: STATS */}
       {activeTab === 'stats' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Tổng Người Dùng</div>
-              <div className="text-2xl font-black text-amber-300 font-mono mt-1">
-                {stats?.totalUsers ?? '...'}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Tổng người dùng</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--text-primary)] mt-1">
+                {stats?.totalUsers ?? '—'}
               </div>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Tổng Câu Hỏi Toán</div>
-              <div className="text-2xl font-black text-indigo-300 font-mono mt-1">
-                {stats?.totalQuestions ?? '...'}
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Tổng câu hỏi toán</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--text-primary)] mt-1">
+                {stats?.totalQuestions ?? '—'}
               </div>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Bộ Bài 10 Hệ</div>
-              <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
-                {stats?.totalCards ?? 60} Lá
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Bộ thẻ 10 phân môn</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--text-primary)] mt-1">
+                {stats?.totalCards ?? 60} thẻ
               </div>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Bộ Ấn Chú</div>
-              <div className="text-2xl font-black text-purple-300 font-mono mt-1">
-                {stats?.totalRunes ?? 16} Rune
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Cổ ngữ hệ thống</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--text-primary)] mt-1">
+                {stats?.totalRunes ?? 16} cổ ngữ
               </div>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-yellow-800/50 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Thành Viên Premium</div>
-              <div className="text-2xl font-black text-yellow-300 font-mono mt-1">
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Thành viên Premium</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--accent-text)] mt-1">
                 {stats?.totalPremiumUsers ?? 0}
               </div>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-indigo-800/50 rounded-2xl text-center">
-              <div className="text-xs text-slate-400">Yêu Cầu Premium Chờ Duyệt</div>
-              <div className="text-2xl font-black text-indigo-300 font-mono mt-1">
+            <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl">
+              <div className="text-xs text-[var(--text-muted)]">Yêu cầu chờ duyệt</div>
+              <div className="text-2xl font-mono tabular-nums font-semibold text-[var(--accent-text)] mt-1">
                 {stats?.pendingPremiumRequests ?? 0}
               </div>
             </div>
           </div>
 
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 text-xs font-mono text-slate-300">
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-2 text-xs font-mono tabular-nums text-[var(--text-secondary)]">
             <div className="flex justify-between">
-              <span>Trạng Thái Hệ Thống:</span>
-              <span className="text-emerald-400 font-bold">● Đang Hoạt Động (Healthy)</span>
+              <span>Trạng thái máy chủ</span>
+              <span className="text-[var(--status-success)] font-medium">Đang hoạt động</span>
             </div>
             <div className="flex justify-between">
-              <span>Bộ Nhớ RAM Đang Chiếm:</span>
-              <span className="text-amber-300">{stats?.activeMemoryUsage ?? '34 MB'}</span>
+              <span>Bộ nhớ đang dùng</span>
+              <span className="text-[var(--text-primary)]">
+                {stats?.activeMemoryUsage ?? '—'}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span>Engine Đồng Bộ:</span>
-              <span className="text-indigo-300">WebSocket Authoritative Server</span>
+              <span>Đồng bộ trận đấu</span>
+              <span className="text-[var(--text-primary)]">WebSocket Authoritative</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: QUESTIONS MANAGEMENT */}
+      {/* TAB 2: QUESTIONS */}
       {activeTab === 'questions' && (
         <div className="space-y-6">
-          {/* AI QUESTION GENERATOR FROM CREDIBLE WEBSITES */}
-          <div className="p-5 bg-gradient-to-br from-indigo-950/90 via-slate-900 to-purple-950/90 border-2 border-indigo-500/50 rounded-2xl space-y-4 shadow-2xl relative overflow-hidden">
-            {/* Ambient runic glow */}
-            <div className="absolute -top-10 -right-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-800/40 pb-3">
+          <div className="p-5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-hairline)] pb-3">
               <div>
-                <h3 className="font-cinzel text-base font-bold text-amber-300 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
-                  <span>SINH ĐỀ TOÁN HỌC BẰNG AI (NGUỒN WEB UY TÍN)</span>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                  <span>Sinh câu hỏi tự động từ nguồn học liệu</span>
                 </h3>
-                <p className="text-[11px] text-indigo-200/80 mt-0.5">
-                  Mô hình AI đối chiếu và trích xuất câu hỏi toán học chuẩn mực từ: VietJack, VMF Diễn Đàn Toán Học, Lời Giải Hay, MathVN, Khan Academy, Bộ GD&ĐT.
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Tạo câu hỏi kèm đáp án và lời giải từ các nguồn phổ biến như VietJack, VMF, MathVN, Khan Academy
                 </p>
               </div>
-              <span className="self-start sm:self-auto px-2.5 py-1 bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 rounded-full text-[11px] font-mono flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Kết Quả & Lời Giải Thẩm Định</span>
+              <span className="self-start sm:self-auto px-2.5 py-1 bg-[var(--status-success-subtle)] text-[var(--status-success)] border border-[var(--status-success)]/40 rounded-md text-xs font-medium inline-flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span>Có lời giải kiểm chứng</span>
               </span>
             </div>
 
             {aiSuccessMsg && (
-              <div className="p-3 bg-emerald-950/80 border border-emerald-600 text-emerald-200 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
-                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="p-3 bg-[var(--status-success-subtle)] border border-[var(--status-success)] text-[var(--status-success)] text-xs rounded-lg flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
                 <span>{aiSuccessMsg}</span>
               </div>
             )}
 
             {aiErrorMsg && (
-              <div className="p-3 bg-rose-950/80 border border-rose-600 text-rose-200 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
-                <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)] text-[var(--status-danger)] text-xs rounded-lg flex items-center gap-2">
+                <XCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
                 <span>{aiErrorMsg}</span>
               </div>
             )}
 
-            <form onSubmit={handleGenerateAiQuestion} className="space-y-3.5 text-xs">
+            <form onSubmit={handleGenerateAiQuestion} className="space-y-3 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Chọn Nguồn Toán Học Uy Tín */}
-                <div>
-                  <label className="block text-indigo-200 font-semibold mb-1 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Nguồn Web Uy Tín Ưu Tiên:</span>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)] font-medium">
+                    Nguồn tham chiếu ưu tiên
                   </label>
                   <select
                     value={aiPreferredSource}
                     onChange={e => setAiPreferredSource(e.target.value)}
-                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   >
-                    <option value="VietJack Chuyên Đề Toán (vietjack.com)">🌐 VietJack Chuyên Đề Toán (vietjack.com)</option>
-                    <option value="Diễn đàn Toán học Việt Nam (diendantoanhoc.org - VMF)">🌐 Diễn đàn Toán học VMF (diendantoanhoc.org)</option>
-                    <option value="Lời Giải Hay (loigiaihay.com)">🌐 Lời Giải Hay (loigiaihay.com)</option>
-                    <option value="MathVN Chuyên Toán (mathvn.com)">🌐 MathVN Chuyên Toán (mathvn.com)</option>
-                    <option value="Khan Academy Math (vi.khanacademy.org)">🌐 Khan Academy Math (vi.khanacademy.org)</option>
-                    <option value="Bộ GD&ĐT - Đề Thi Tuyển Sinh Chuẩn">🌐 Bộ GD&ĐT - Đề Thi Chuẩn Quốc Gia</option>
+                    <option value="VietJack Chuyên Đề Toán (vietjack.com)">
+                      VietJack Chuyên Đề Toán (vietjack.com)
+                    </option>
+                    <option value="Diễn đàn Toán học Việt Nam (diendantoanhoc.org - VMF)">
+                      Diễn đàn Toán học VMF (diendantoanhoc.org)
+                    </option>
+                    <option value="Lời Giải Hay (loigiaihay.com)">
+                      Lời Giải Hay (loigiaihay.com)
+                    </option>
+                    <option value="MathVN Chuyên Toán (mathvn.com)">
+                      MathVN Chuyên Toán (mathvn.com)
+                    </option>
+                    <option value="Khan Academy Math (vi.khanacademy.org)">
+                      Khan Academy Math (vi.khanacademy.org)
+                    </option>
+                    <option value="Bộ GD&ĐT - Đề Thi Tuyển Sinh Chuẩn">
+                      Bộ GD&ĐT - Đề thi chuẩn quốc gia
+                    </option>
                   </select>
                 </div>
 
-                {/* Chọn Phân Môn */}
-                <div>
-                  <label className="block text-indigo-200 font-semibold mb-1">Phân Môn Toán Học:</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)] font-medium">
+                    Phân môn toán học
+                  </label>
                   <select
                     value={aiCategory}
-                    onChange={e => setAiCategory(e.target.value as any)}
-                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    onChange={e => setAiCategory(e.target.value as MathCategory)}
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   >
                     {Object.entries(MATH_DOMAINS).map(([k, v]) => (
-                      <option key={k} value={k}>{v.nameVi} ({k})</option>
+                      <option key={k} value={k}>
+                        {v.nameVi} ({k})
+                      </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Chọn Cấp Độ */}
-                <div>
-                  <label className="block text-indigo-200 font-semibold mb-1">Cấp Độ Đối Tượng:</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)] font-medium">
+                    Cấp độ đối tượng
+                  </label>
                   <select
                     value={aiLevel}
-                    onChange={e => setAiLevel(e.target.value as any)}
-                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    onChange={e => setAiLevel(e.target.value as MathLevel)}
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   >
-                    <option value="THCS">THCS (Lớp 6 - Lớp 9)</option>
-                    <option value="THPT">THPT (Lớp 10 - Lớp 12)</option>
-                    <option value="CO_BAN">Cơ Bản (Tiểu Học Lớp 1 - 5)</option>
+                    <option value="THCS">THCS (Lớp 6 - 9)</option>
+                    <option value="THPT">THPT (Lớp 10 - 12)</option>
+                    <option value="CO_BAN">Cơ bản (Tiểu học)</option>
                   </select>
                 </div>
               </div>
 
-              {/* Nhập Chủ Đề / Từ Khóa */}
-              <div>
-                <label className="block text-indigo-200 font-semibold mb-1">
-                  Chủ Đề / Từ Khóa Cụ Thể (Tùy chọn):
+              <div className="space-y-1">
+                <label className="block text-[var(--text-secondary)] font-medium">
+                  Chủ đề hoặc từ khóa (tùy chọn)
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={aiTopic}
                     onChange={e => setAiTopic(e.target.value)}
-                    placeholder="VD: Số nguyên tố & Ước số chung, Định lý Pythagoras, Bất đẳng thức Cauchy, Đạo hàm tiếp tuyến..."
-                    className="flex-1 bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    placeholder="Ví dụ: Số nguyên tố, Định lý Pythagoras, Bất đẳng thức..."
+                    className="flex-1 h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                   />
                   <button
                     type="submit"
                     disabled={aiGenerating}
-                    className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"
+                    className="h-9 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium rounded-lg inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer disabled:opacity-50"
                   >
                     {aiGenerating ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
-                        <span>Đang Đối Chiếu & Sinh Đề...</span>
+                        <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.5} />
+                        <span>Đang tạo đề...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 text-slate-950" />
-                        <span>SINH ĐỀ AI NGAY</span>
+                        <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+                        <span>Tạo câu hỏi</span>
                       </>
                     )}
                   </button>
@@ -757,253 +846,276 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               </div>
             </form>
 
-            {/* AI Generated Question Result Card */}
             {aiGeneratedQuestion && (
-              <div className="p-4 bg-slate-950/90 border-2 border-amber-500/60 rounded-xl space-y-3 animate-in fade-in zoom-in-95">
-                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-800">
+              <div className="p-4 bg-[var(--bg-inset)] border border-[var(--accent)] rounded-xl space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-[var(--border-hairline)] text-xs">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 font-mono">
-                      ✨ ĐỀ THI VỪA SINH
+                    <span className="px-2 py-0.5 rounded bg-[var(--accent-subtle)] text-[var(--accent-text)] font-medium">
+                      Câu hỏi vừa tạo
                     </span>
                     {aiGeneratedQuestion.sourceName && (
                       <a
                         href={aiGeneratedQuestion.sourceUrl || '#'}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-950 text-sky-300 border border-sky-700/60 hover:border-sky-400 transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                       >
-                        <Globe className="w-3 h-3 text-sky-400" />
+                        <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
                         <span>Nguồn: {aiGeneratedQuestion.sourceName}</span>
-                        <ExternalLink className="w-2.5 h-2.5 text-sky-400" />
+                        <ExternalLink className="w-3 h-3" strokeWidth={1.5} />
                       </a>
                     )}
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Cấp: {aiGeneratedQuestion.level} • Hệ: {aiGeneratedQuestion.category}
-                    </span>
                   </div>
+                  <span className="font-mono text-[var(--text-muted)]">
+                    {aiGeneratedQuestion.level} · {aiGeneratedQuestion.category}
+                  </span>
                 </div>
 
-                <div className="text-sm font-bold text-slate-100 leading-relaxed">
+                <div className="text-sm font-medium text-[var(--text-primary)] leading-relaxed">
                   {aiGeneratedQuestion.question}
                 </div>
 
-                {/* 4 Choices */}
                 {aiGeneratedQuestion.options && aiGeneratedQuestion.options.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     {aiGeneratedQuestion.options.map((opt, idx) => {
-                      const isCorrect = opt.trim() === aiGeneratedQuestion.answer.trim();
+                      const isCorrect =
+                        opt.trim() === aiGeneratedQuestion.answer.trim();
                       return (
                         <div
                           key={idx}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 font-mono ${
+                          className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 font-mono ${
                             isCorrect
-                              ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200 font-bold ring-1 ring-emerald-500/50'
-                              : 'bg-slate-900 border-slate-800 text-slate-300'
+                              ? 'bg-[var(--status-success-subtle)] border-[var(--status-success)] text-[var(--status-success)] font-medium'
+                              : 'bg-[var(--bg-surface)] border-[var(--border-hairline)] text-[var(--text-secondary)]'
                           }`}
                         >
                           <span>
-                            <strong className="text-amber-300 mr-2">{String.fromCharCode(65 + idx)}.</strong>
-                            {opt}
+                            {String.fromCharCode(65 + idx)}. {opt}
                           </span>
-                          {isCorrect && (
-                            <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-md">
-                              ĐÁP ÁN ĐÚNG
-                            </span>
-                          )}
+                          {isCorrect && <span>Đáp án đúng</span>}
                         </div>
                       );
                     })}
                   </div>
                 )}
 
-                {/* Explanation */}
-                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300 space-y-1">
-                  <div className="text-[11px] font-bold text-amber-300 font-mono flex items-center gap-1.5">
-                    <span>📖 LỜI GIẢI THÍCH CHI TIẾT (ĐÃ THẨM ĐỊNH):</span>
-                  </div>
-                  <p className="leading-relaxed text-slate-200">{aiGeneratedQuestion.explanation}</p>
+                <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-lg text-xs text-[var(--text-secondary)] space-y-1">
+                  <div className="font-medium text-[var(--text-primary)]">Lời giải chi tiết</div>
+                  <p className="leading-relaxed">{aiGeneratedQuestion.explanation}</p>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex items-center gap-2 pt-1">
                   <button
+                    type="button"
                     onClick={handleSaveAiQuestionToBank}
                     disabled={aiSavingToDb}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase"
+                    className="flex-1 h-9 bg-[var(--status-success)] hover:opacity-90 text-white font-medium rounded-lg inline-flex items-center justify-center gap-2 text-xs cursor-pointer disabled:opacity-50"
                   >
                     {aiSavingToDb ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                        <span>Đang Lưu...</span>
+                        <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.5} />
+                        <span>Đang lưu...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 text-emerald-300" />
-                        <span>Lưu Vào Ngân Hàng Đề Thi Đấu</span>
+                        <CheckCircle className="w-4 h-4" strokeWidth={1.5} />
+                        <span>Lưu vào ngân hàng đề</span>
                       </>
                     )}
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => handleGenerateAiQuestion()}
                     disabled={aiGenerating}
-                    className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl transition-all active:scale-95 text-xs font-semibold flex items-center gap-1.5"
+                    className="h-9 px-4 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] text-[var(--text-primary)] border border-[var(--border-hairline)] rounded-lg text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${aiGenerating ? 'animate-spin' : ''}`} />
-                    <span>Sinh Câu Khác</span>
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${aiGenerating ? 'animate-spin' : ''}`}
+                      strokeWidth={1.5}
+                    />
+                    <span>Tạo câu khác</span>
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Add Question Form (Thủ công) */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5">
-              <Plus className="w-4 h-4" />
-              <span>THÊM CÂU HỎI THỦ CÔNG VÀO NGÂN HÀNG ĐỀ</span>
+          <div className="p-5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <Plus className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+              <span>Thêm câu hỏi thủ công</span>
             </h3>
 
             {formMsg && (
-              <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+              <div className="p-2.5 bg-[var(--bg-inset)] border border-[var(--accent)] text-[var(--accent-text)] text-xs rounded-lg">
                 {formMsg}
               </div>
             )}
 
             <form onSubmit={handleAddQuestion} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1">Nội dung câu hỏi (*):</label>
+              <div className="space-y-1">
+                <label className="block text-[var(--text-secondary)]">Nội dung câu hỏi</label>
                 <input
                   type="text"
                   required
                   value={qText}
                   onChange={e => setQText(e.target.value)}
-                  placeholder="VD: Số 29 có phải là số nguyên tố không?"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  placeholder="Ví dụ: Số 29 có phải là số nguyên tố không?"
+                  className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1">Hệ Toán Học:</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Phân môn</label>
                   <select
                     value={qCategory}
-                    onChange={e => setQCategory(e.target.value as any)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    onChange={e => setQCategory(e.target.value as MathCategory)}
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   >
                     {Object.entries(MATH_DOMAINS).map(([k, v]) => (
-                      <option key={k} value={k}>{v.nameVi} ({k})</option>
+                      <option key={k} value={k}>
+                        {v.nameVi} ({k})
+                      </option>
                     ))}
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-1">Cấp Độ:</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Cấp độ</label>
                   <select
                     value={qLevel}
-                    onChange={e => setQLevel(e.target.value as any)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    onChange={e => setQLevel(e.target.value as MathLevel)}
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   >
-                    <option value="THCS">THCS (Cấp 2)</option>
-                    <option value="THPT">THPT (Cấp 3)</option>
-                    <option value="DAI_HOC">Đại Học</option>
+                    <option value="CO_BAN">Cơ bản</option>
+                    <option value="THCS">THCS</option>
+                    <option value="THPT">THPT</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-1">Thời Gian Trả Lời (giây):</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">
+                    Thời gian trả lời (giây)
+                  </label>
                   <input
                     type="number"
                     min={5}
                     max={60}
                     value={qTimeLimit}
                     onChange={e => setQTimeLimit(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 mb-1">Đáp Án Đúng (*):</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Đáp án đúng</label>
                   <input
                     type="text"
                     required
                     value={qAnswer}
                     onChange={e => setQAnswer(e.target.value)}
-                    placeholder="VD: Có, hoặc 15, hoặc 4"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                    placeholder="Ví dụ: 15"
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-1">Các Lựa Chọn (cách nhau bởi dấu phẩy):</label>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">
+                    Các lựa chọn (phân tách bằng dấu phẩy)
+                  </label>
                   <input
                     type="text"
                     value={qOptions}
                     onChange={e => setQOptions(e.target.value)}
-                    placeholder="VD: Có, Không hoặc 12, 14, 15, 16"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                    placeholder="Ví dụ: 12, 14, 15, 16"
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1">Lời Giải Thích Chi Tiết:</label>
+              <div className="space-y-1">
+                <label className="block text-[var(--text-secondary)]">Lời giải thích</label>
                 <textarea
                   rows={2}
                   value={qExplanation}
                   onChange={e => setQExplanation(e.target.value)}
-                  placeholder="Giải thích từng bước giúp người chơi học tập khi trả lời sai..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  placeholder="Giải thích các bước thực hiện"
+                  className="w-full bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 py-2 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold rounded-xl shadow transition-all active:scale-95 uppercase"
+                className="h-9 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium rounded-lg transition-colors cursor-pointer"
               >
-                Thêm Vào Ngân Hàng
+                Thêm vào ngân hàng đề
               </button>
             </form>
           </div>
 
-          {/* Questions List */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300">
-              DANH SÁCH CÂU HỎI HIỆN CÓ ({questions.length} CÂU)
+          <div className="space-y-2.5">
+            <h4 className="text-xs font-medium text-[var(--text-secondary)] font-mono tabular-nums">
+              Danh sách câu hỏi ({questions.length} câu)
             </h4>
             <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
               {questions.map((q, i) => (
                 <div
                   key={q.id || i}
-                  className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-start justify-between gap-3 text-xs"
+                  className="p-3 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl flex items-start justify-between gap-3 text-xs"
                 >
-                  <div>
-                    <div className="font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="font-medium text-[var(--text-primary)] flex items-center gap-2 flex-wrap">
                       <span>{q.question}</span>
                       {q.sourceName && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-sky-950/80 text-sky-300 border border-sky-800 font-mono font-medium">
-                          🌐 {q.sourceName}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[11px] text-[var(--text-secondary)] font-mono">
+                          <Globe className="w-3 h-3" strokeWidth={1.5} />
+                          <span>{q.sourceName}</span>
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono mt-1 flex items-center gap-2 flex-wrap">
-                      <span>Hệ: {q.category}</span>
-                      <span>•</span>
+                    <div className="text-xs text-[var(--text-muted)] font-mono mt-1 flex items-center gap-2 flex-wrap">
+                      <span>Phân môn: {q.category}</span>
+                      <span>·</span>
                       <span>Cấp: {q.level}</span>
-                      <span>•</span>
-                      <span>Đáp án: <strong className="text-emerald-400">{q.answer}</strong></span>
+                      <span>·</span>
+                      <span className="text-[var(--status-success)]">Đáp án: {q.answer}</span>
                     </div>
                   </div>
 
                   {q.id?.startsWith('ADMIN_') && (
-                    <button
-                      onClick={() => handleDeleteQuestion(q.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="shrink-0">
+                      {confirmDeleteQId === q.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuestion(q.id)}
+                            className="h-7 px-2 bg-[var(--status-danger)] text-white rounded text-[11px] cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteQId(null)}
+                            className="h-7 px-2 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded text-[11px] cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteQId(q.id)}
+                          aria-label="Xóa câu hỏi"
+                          className="p-1.5 text-[var(--text-muted)] hover:text-[var(--status-danger)] rounded-lg hover:bg-[var(--bg-raised)] cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -1012,346 +1124,436 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* TAB 3: USERS LIST (PHÂN LOẠI TÀI KHOẢN ĐĂNG KÝ / CHƠI NHANH & QUẢN LÝ GÓI PRO) */}
-      {activeTab === 'users' && (() => {
-        const registeredUsers = users.filter(u => !isUserGuest(u) && u.role !== 'admin');
-        const guestUsers = users.filter(u => isUserGuest(u));
-        const proUsers = users.filter(u => isUserPro(u));
+      {/* TAB 3: USERS */}
+      {activeTab === 'users' &&
+        (() => {
+          const registeredUsers = users.filter(
+            u => !isUserGuest(u) && u.role !== 'admin'
+          );
+          const guestUsers = users.filter(u => isUserGuest(u));
+          const proUsers = users.filter(u => isUserPro(u));
 
-        const filteredUsers = users.filter(u => {
-          if (userFilter === 'registered') {
-            if (isUserGuest(u) || u.role === 'admin') return false;
-          } else if (userFilter === 'guest') {
-            if (!isUserGuest(u)) return false;
-          } else if (userFilter === 'pro') {
-            if (!isUserPro(u)) return false;
-          }
+          const filteredUsers = users.filter(u => {
+            if (userFilter === 'registered') {
+              if (isUserGuest(u) || u.role === 'admin') return false;
+            } else if (userFilter === 'guest') {
+              if (!isUserGuest(u)) return false;
+            } else if (userFilter === 'pro') {
+              if (!isUserPro(u)) return false;
+            }
 
-          if (userSearch.trim()) {
-            const query = userSearch.toLowerCase();
-            const matchName = (u.username || '').toLowerCase().includes(query);
-            const matchId = (u.id || '').toLowerCase().includes(query);
-            return matchName || matchId;
-          }
-          return true;
-        });
+            if (userSearch.trim()) {
+              const query = userSearch.toLowerCase();
+              const matchName = (u.username || '').toLowerCase().includes(query);
+              const matchId = (u.id || '').toLowerCase().includes(query);
+              return matchName || matchId;
+            }
+            return true;
+          });
 
-        return (
-          <div className="space-y-4">
-            {/* TOOL: GIA HẠN GÓI PRO CHO NGƯỜI MÌNH MUỐN */}
-            <div className="p-4 bg-slate-900 border-2 border-yellow-600/50 rounded-2xl space-y-3 shadow-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="font-cinzel text-sm font-bold text-yellow-300 flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-yellow-400" />
-                  <span>GIA HẠN / CẤP GÓI PRO CHO NGƯỜI BẠN MUỐN</span>
-                </h3>
-                <span className="text-[11px] text-slate-400">Công cụ độc quyền Admin</span>
-              </div>
-
-              {grantActionMsg && (
-                <div className="p-2.5 bg-emerald-950 border border-emerald-700 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 shrink-0" />
-                  <span>{grantActionMsg}</span>
+          return (
+            <div className="space-y-4">
+              {usersMsg && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${
+                    usersMsg.type === 'ok'
+                      ? 'bg-[var(--status-success-subtle)] border-[var(--status-success)] text-[var(--status-success)]'
+                      : 'bg-[var(--status-danger-subtle)] border-[var(--status-danger)] text-[var(--status-danger)]'
+                  }`}
+                >
+                  {usersMsg.type === 'ok' ? (
+                    <CheckCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <XCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                  )}
+                  <span>{usersMsg.text}</span>
                 </div>
               )}
 
-              <form onSubmit={handleCustomGrantByUsername} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                <div className="sm:col-span-2">
-                  <input
-                    type="text"
-                    value={customGrantUsername}
-                    onChange={e => setCustomGrantUsername(e.target.value)}
-                    placeholder="Nhập Tên đăng nhập hoặc ID người muốn gia hạn..."
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-yellow-400 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
-                  />
+              <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                    <span>Cấp hoặc gia hạn gói PRO theo tên tài khoản</span>
+                  </h3>
                 </div>
 
-                <div>
-                  <select
-                    value={customGrantDays}
-                    onChange={e => setCustomGrantDays(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-yellow-400 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none"
-                  >
-                    <option value={7}>7 Ngày (1 Tuần)</option>
-                    <option value={30}>30 Ngày (1 Tháng)</option>
-                    <option value={60}>60 Ngày (2 Tháng)</option>
-                    <option value={90}>90 Ngày (3 Tháng)</option>
-                    <option value={180}>180 Ngày (6 Tháng)</option>
-                    <option value={365}>365 Ngày (1 Năm)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <button
-                    type="submit"
-                    disabled={grantActionLoading || !customGrantUsername.trim()}
-                    className="w-full py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {grantActionLoading ? 'Đang cấp...' : 'Gia Hạn PRO Ngay'}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* USERS OVERVIEW & FILTERS */}
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h3 className="font-cinzel text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-amber-400" />
-                  <span>DANH SÁCH NGƯỜI DÙNG ({users.length} PHÁP SƯ)</span>
-                </h3>
-
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setUserFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      userFilter === 'all'
-                        ? 'bg-amber-500 text-slate-950 shadow-sm'
-                        : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                    }`}
-                  >
-                    Tất Cả ({users.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setUserFilter('registered')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      userFilter === 'registered'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'bg-slate-950 text-emerald-400/80 hover:text-emerald-300 border border-slate-800'
-                    }`}
-                  >
-                    🟢 Đã Đăng Ký ({registeredUsers.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setUserFilter('guest')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      userFilter === 'guest'
-                        ? 'bg-amber-600 text-white shadow-sm'
-                        : 'bg-slate-950 text-amber-400/80 hover:text-amber-300 border border-slate-800'
-                    }`}
-                  >
-                    ⚡ Chơi Nhanh ({guestUsers.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setUserFilter('pro')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      userFilter === 'pro'
-                        ? 'bg-yellow-500 text-slate-950 shadow-sm'
-                        : 'bg-slate-950 text-yellow-400/80 hover:text-yellow-300 border border-slate-800'
-                    }`}
-                  >
-                    <Crown className="w-3 h-3" />
-                    <span>PRO ({proUsers.length})</span>
-                  </button>
-                </div>
-
-                {guestUsers.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteAllGuests}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-700/80 hover:border-rose-500 text-rose-200 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 self-start sm:self-auto"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Xóa Tất Cả Acc Chơi Nhanh ({guestUsers.length})</span>
-                  </button>
+                {grantActionMsg && (
+                  <div className="p-2.5 bg-[var(--status-success-subtle)] border border-[var(--status-success)] text-[var(--status-success)] text-xs rounded-lg flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                    <span>{grantActionMsg}</span>
+                  </div>
                 )}
+
+                <form
+                  onSubmit={handleCustomGrantByUsername}
+                  className="grid grid-cols-1 sm:grid-cols-4 gap-2.5"
+                >
+                  <div className="sm:col-span-2">
+                    <input
+                      type="text"
+                      value={customGrantUsername}
+                      onChange={e => setCustomGrantUsername(e.target.value)}
+                      placeholder="Nhập tên đăng nhập hoặc ID người dùng"
+                      className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] focus:border-[var(--accent)] rounded-lg px-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <select
+                      value={customGrantDays}
+                      onChange={e => setCustomGrantDays(Number(e.target.value))}
+                      className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] focus:border-[var(--accent)] rounded-lg px-2.5 text-xs text-[var(--text-primary)] focus:outline-none"
+                    >
+                      <option value={7}>7 ngày</option>
+                      <option value={30}>30 ngày</option>
+                      <option value={60}>60 ngày</option>
+                      <option value={90}>90 ngày</option>
+                      <option value={180}>180 ngày</option>
+                      <option value={365}>365 ngày</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={grantActionLoading || !customGrantUsername.trim()}
+                      className="w-full h-9 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {grantActionLoading ? 'Đang cấp...' : 'Gia hạn PRO'}
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {/* Search Box */}
-              <div>
+              <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                    <span className="font-mono tabular-nums">
+                      Danh sách tài khoản ({users.length})
+                    </span>
+                  </h3>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setUserFilter('all')}
+                      className={`h-8 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer font-mono tabular-nums ${
+                        userFilter === 'all'
+                          ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-hairline)]'
+                      }`}
+                    >
+                      Tất cả ({users.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setUserFilter('registered')}
+                      className={`h-8 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer font-mono tabular-nums ${
+                        userFilter === 'registered'
+                          ? 'bg-[var(--status-success)] border-[var(--status-success)] text-white'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-hairline)]'
+                      }`}
+                    >
+                      Đã đăng ký ({registeredUsers.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setUserFilter('guest')}
+                      className={`h-8 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer font-mono tabular-nums ${
+                        userFilter === 'guest'
+                          ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-hairline)]'
+                      }`}
+                    >
+                      Khách ({guestUsers.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setUserFilter('pro')}
+                      className={`h-8 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer font-mono tabular-nums ${
+                        userFilter === 'pro'
+                          ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-hairline)]'
+                      }`}
+                    >
+                      PRO ({proUsers.length})
+                    </button>
+                  </div>
+
+                  {guestUsers.length > 0 &&
+                    (confirmDeleteAllGuests ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleDeleteAllGuests}
+                          className="h-8 px-3 bg-[var(--status-danger)] text-white rounded-lg text-xs font-medium cursor-pointer"
+                        >
+                          Xác nhận xóa {guestUsers.length} khách
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteAllGuests(false)}
+                          className="h-8 px-2.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded-lg text-xs cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteAllGuests(true)}
+                        className="h-8 inline-flex items-center gap-1.5 px-3 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 text-[var(--status-danger)] rounded-lg text-xs font-medium cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        <span>Xóa toàn bộ tài khoản khách</span>
+                      </button>
+                    ))}
+                </div>
+
                 <input
                   type="text"
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
-                  placeholder="Tìm kiếm theo Tên tài khoản hoặc ID người dùng..."
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none"
+                  placeholder="Tìm kiếm theo tên tài khoản hoặc ID"
+                  className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] focus:border-[var(--accent)] rounded-lg px-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 />
-              </div>
 
-              {/* User rows */}
-              <div className="space-y-2.5 pt-1">
-                {filteredUsers.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-500 bg-slate-950 rounded-xl border border-slate-800">
-                    Không tìm thấy người dùng nào phù hợp với bộ lọc.
-                  </div>
-                ) : (
-                  filteredUsers.map(u => {
-                    const activePro = isUserPro(u);
-                    const isGuest = isUserGuest(u);
-                    const isAdmin = u.role === 'admin';
+                <div className="space-y-2.5 pt-1">
+                  {filteredUsers.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-inset)] rounded-lg border border-[var(--border-hairline)]">
+                      Không tìm thấy tài khoản phù hợp
+                    </div>
+                  ) : (
+                    filteredUsers.map(u => {
+                      const activePro = isUserPro(u);
+                      const isGuest = isUserGuest(u);
+                      const isAdmin = u.role === 'admin';
 
-                    return (
-                      <div
-                        key={u.id}
-                        className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl shrink-0">{u.avatar}</span>
-                          <div className="space-y-1">
-                            <div className="font-bold text-slate-200 flex items-center gap-2 flex-wrap">
-                              <span className="text-sm">{u.username}</span>
+                      return (
+                        <div
+                          key={u.id}
+                          className="p-3.5 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <AvatarBadge avatar={u.avatar} size="md" />
+                            <div className="space-y-1 min-w-0">
+                              <div className="font-medium text-[var(--text-primary)] flex items-center gap-2 flex-wrap">
+                                <span className="text-sm">{u.username}</span>
 
-                              {/* Account Type Classification Badges */}
-                              {isAdmin ? (
-                                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[10px] font-black rounded-md">
-                                  🛡️ ADMIN
-                                </span>
-                              ) : isGuest ? (
-                                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-400/40 text-amber-300 text-[10px] font-bold rounded-md flex items-center gap-1">
-                                  ⚡ CHƠI NHANH (KHÁCH)
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold rounded-md flex items-center gap-1">
-                                  🟢 ĐÃ ĐĂNG KÝ
-                                </span>
-                              )}
-
-                              {/* Pro VIP Badge */}
-                              {activePro && (
-                                <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 text-[10px] font-black rounded-md">
-                                  <Crown className="w-3 h-3" />
-                                  <span>PRO VIP ({u.premiumPlan === 'monthly' ? 'Tháng' : 'Lời Giải'})</span>
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2.5 flex-wrap">
-                              <span>ID: <span className="text-slate-300">{u.id}</span></span>
-                              <span>•</span>
-                              <span>Tạo: {new Date(u.createdAt).toLocaleDateString('vi-VN')}</span>
-                              {activePro && u.premiumExpiresAt && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-yellow-300 font-semibold">
-                                    Hạn PRO: {new Date(u.premiumExpiresAt).toLocaleDateString('vi-VN')}
+                                {isAdmin ? (
+                                  <span className="px-2 py-0.5 bg-[var(--accent-subtle)] border border-[var(--accent)]/40 text-[var(--accent-text)] text-[11px] rounded inline-flex items-center gap-1">
+                                    <Shield className="w-3 h-3" strokeWidth={1.5} />
+                                    <span>Admin</span>
                                   </span>
-                                </>
-                              )}
+                                ) : isGuest ? (
+                                  <span className="px-2 py-0.5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] text-[11px] rounded inline-flex items-center gap-1">
+                                    <Zap className="w-3 h-3" strokeWidth={1.5} />
+                                    <span>Khách</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-[var(--status-success-subtle)] border border-[var(--status-success)]/40 text-[var(--status-success)] text-[11px] rounded">
+                                    Đã đăng ký
+                                  </span>
+                                )}
+
+                                {activePro && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--accent-subtle)] border border-[var(--accent)]/40 text-[var(--accent-text)] text-[11px] rounded">
+                                    <Crown className="w-3 h-3" strokeWidth={1.5} />
+                                    <span>
+                                      PRO ({u.premiumPlan === 'monthly' ? 'Tháng' : 'Lời giải'})
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="text-xs font-mono tabular-nums text-[var(--text-muted)] flex items-center gap-2.5 flex-wrap">
+                                <span>ID: {u.id}</span>
+                                <span>·</span>
+                                <span>
+                                  Tạo: {new Date(u.createdAt).toLocaleDateString('vi-VN')}
+                                </span>
+                                {activePro && u.premiumExpiresAt && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-[var(--accent-text)]">
+                                      Hạn PRO:{' '}
+                                      {new Date(u.premiumExpiresAt).toLocaleDateString('vi-VN')}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Actions: Gia hạn gói PRO & Gỡ gói PRO */}
-                        {!isAdmin && (
-                          <div className="flex items-center gap-1.5 flex-wrap self-end md:self-auto">
-                            {activePro ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRevokePremium(u.id)}
-                                  className="px-2.5 py-1.5 bg-rose-950/60 border border-rose-700/60 hover:border-rose-500 text-rose-300 rounded-lg transition-colors font-medium text-[11px]"
-                                >
-                                  ❌ Gỡ Gói PRO
-                                </button>
+                          {!isAdmin && (
+                            <div className="flex items-center gap-1.5 flex-wrap self-end md:self-auto">
+                              {activePro ? (
+                                <>
+                                  {confirmRevokeUserId === u.id ? (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRevokePremium(u.id)}
+                                        className="h-7 px-2 bg-[var(--status-danger)] text-white rounded text-[11px] cursor-pointer"
+                                      >
+                                        Xác nhận gỡ
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmRevokeUserId(null)}
+                                        className="h-7 px-2 bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded text-[11px] cursor-pointer"
+                                      >
+                                        Hủy
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmRevokeUserId(u.id)}
+                                      className="h-7 px-2.5 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/40 text-[var(--status-danger)] rounded-md text-[11px] font-medium cursor-pointer"
+                                    >
+                                      Gỡ PRO
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGrantPremium(u.id, 'monthly', 30)}
+                                    className="h-7 px-2.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--accent-text)] rounded-md text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <RefreshCw className="w-3 h-3" strokeWidth={1.5} />
+                                    <span>+30 ngày</span>
+                                  </button>
+                                </>
+                              ) : (
                                 <button
                                   type="button"
                                   onClick={() => handleGrantPremium(u.id, 'monthly', 30)}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-500/10 border border-yellow-500/40 hover:border-yellow-400 text-yellow-300 rounded-lg transition-colors font-medium text-[11px]"
+                                  className="h-7 px-2.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:border-[var(--accent)] text-[var(--accent-text)] rounded-md text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer"
                                 >
-                                  🔄 +30 Ngày
+                                  <Crown className="w-3 h-3" strokeWidth={1.5} />
+                                  <span>Cấp PRO 30 ngày</span>
                                 </button>
-                              </>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleGrantPremium(u.id, 'monthly', 30)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-950/50 border border-yellow-700/60 hover:border-yellow-400 text-yellow-300 rounded-lg transition-colors font-medium text-[11px]"
-                              >
-                                <Crown className="w-3 h-3" />
-                                <span>Cấp PRO 30 Ngày</span>
-                              </button>
-                            )}
+                              )}
 
-                            {isGuest ? (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u)}
-                                title="Xóa tài khoản Chơi Nhanh này"
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/60 border border-rose-800/80 hover:border-rose-500 text-rose-300 rounded-lg hover:bg-rose-900 transition-colors text-[11px] font-medium"
-                              >
-                                <Trash2 className="w-3 h-3 text-rose-400" />
-                                <span>Xóa Acc Khách</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUser(u)}
-                                title="Xóa tài khoản này"
-                                className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-900 border border-slate-800 transition-colors"
-                              >
-                                <UserX className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
+                              {confirmDeleteUserId === u.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteUser(u)}
+                                    className="h-7 px-2 bg-[var(--status-danger)] text-white rounded text-[11px] cursor-pointer"
+                                  >
+                                    Xác nhận xóa
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteUserId(null)}
+                                    className="h-7 px-2 bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded text-[11px] cursor-pointer"
+                                  >
+                                    Hủy
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteUserId(u.id)}
+                                  title="Xóa tài khoản này"
+                                  aria-label="Xóa tài khoản"
+                                  className="h-7 px-2 bg-[var(--bg-surface)] border border-[var(--border-hairline)] hover:border-[var(--status-danger)] text-[var(--text-muted)] hover:text-[var(--status-danger)] rounded-md inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <UserX className="w-3.5 h-3.5" strokeWidth={1.5} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* TAB 4: PREMIUM REQUESTS */}
       {activeTab === 'premium' && (
         <div className="space-y-4">
           {premiumActionMsg && (
-            <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+            <div className="p-3 bg-[var(--status-success-subtle)] border border-[var(--status-success)] text-[var(--status-success)] text-xs rounded-lg">
               {premiumActionMsg}
             </div>
           )}
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
-            <h3 className="font-cinzel text-sm font-bold text-slate-200 flex items-center gap-1.5">
-              <Crown className="w-4 h-4 text-yellow-400" />
-              <span>YÊU CẦU MUA GÓI PREMIUM ({premiumRequests.filter(r => r.status === 'pending').length} ĐANG CHỜ)</span>
+
+          <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 font-mono tabular-nums">
+              <Crown className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+              <span>
+                Yêu cầu nâng cấp Premium (
+                {premiumRequests.filter(r => r.status === 'pending').length} chờ duyệt)
+              </span>
             </h3>
 
             {premiumRequests.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-500">Chưa có yêu cầu nào.</div>
+              <div className="p-6 text-center text-xs text-[var(--text-muted)]">
+                Chưa có yêu cầu nào
+              </div>
             ) : (
               <div className="space-y-2">
                 {premiumRequests.map(r => (
                   <div
                     key={r.id}
-                    className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                    className="p-3 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                   >
                     <div>
-                      <div className="font-bold text-slate-200">
-                        {r.username} — <span className="text-amber-300">{r.plan === 'monthly' ? 'Gói Tháng' : 'Gói Xem Lời Giải'}</span>
+                      <div className="font-medium text-[var(--text-primary)]">
+                        {r.username} —{' '}
+                        <span className="text-[var(--accent-text)]">
+                          {r.plan === 'monthly' ? 'Gói tháng' : 'Gói xem lời giải'}
+                        </span>
                       </div>
-                      <div className="text-[10px] font-mono text-slate-500">
-                        {formatVnd(r.price)} • {new Date(r.createdAt).toLocaleString('vi-VN')} •{' '}
-                        <span className={
-                          r.status === 'pending' ? 'text-amber-400' : r.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'
-                        }>
-                          {r.status === 'pending' ? 'ĐANG CHỜ' : r.status === 'approved' ? 'ĐÃ DUYỆT' : 'ĐÃ TỪ CHỐI'}
+                      <div className="text-xs font-mono tabular-nums text-[var(--text-muted)] mt-0.5">
+                        {formatVnd(r.price)} ·{' '}
+                        {new Date(r.createdAt).toLocaleString('vi-VN')} ·{' '}
+                        <span
+                          className={
+                            r.status === 'pending'
+                              ? 'text-[var(--accent-text)]'
+                              : r.status === 'approved'
+                              ? 'text-[var(--status-success)]'
+                              : 'text-[var(--status-danger)]'
+                          }
+                        >
+                          {r.status === 'pending'
+                            ? 'Chờ duyệt'
+                            : r.status === 'approved'
+                            ? 'Đã duyệt'
+                            : 'Đã từ chối'}
                         </span>
                       </div>
                     </div>
 
                     {r.status === 'pending' && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => handleResolvePremiumRequest(r.id, true)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-800/50 hover:border-emerald-500 text-emerald-300 rounded-lg transition-colors"
+                          className="h-8 px-3 bg-[var(--status-success-subtle)] border border-[var(--status-success)]/50 text-[var(--status-success)] rounded-lg inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <CheckCircle className="w-3 h-3" /> Duyệt
+                          <CheckCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+                          <span>Duyệt</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleResolvePremiumRequest(r.id, false)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/40 border border-rose-800/50 hover:border-rose-500 text-rose-300 rounded-lg transition-colors"
+                          className="h-8 px-3 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 text-[var(--status-danger)] rounded-lg inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <XCircle className="w-3 h-3" /> Từ Chối
+                          <XCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+                          <span>Từ chối</span>
                         </button>
                       </div>
                     )}
@@ -1363,89 +1565,126 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* TAB 5: SITE SETTINGS */}
+      {/* TAB 5: SETTINGS */}
       {activeTab === 'settings' && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveSettings} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5">
-              <Link2 className="w-4 h-4" />
-              <span>ĐƯỜNG LINK HƯỚNG DẪN Ở TRANG CHỦ</span>
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              Link này sẽ hiện ở nút "Hướng Dẫn Chi Tiết" trên Trang Chủ (VD: link nhóm Zalo, Facebook, video Youtube hướng dẫn...).
-            </p>
-            <input
-              type="url"
-              value={settingsForm.guideLink || ''}
-              onChange={e => setSettingsForm(f => ({ ...f, guideLink: e.target.value }))}
-              placeholder="https://..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
-            />
+          <form
+            onSubmit={handleSaveSettings}
+            className="p-5 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-4 text-xs"
+          >
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                <span>Liên kết hướng dẫn trang chủ</span>
+              </h3>
+              <p className="text-[var(--text-muted)]">
+                Đường dẫn hiển thị trong mục tài liệu của Cẩm nang hướng dẫn
+              </p>
+              <input
+                type="url"
+                value={settingsForm.guideLink || ''}
+                onChange={e =>
+                  setSettingsForm(f => ({ ...f, guideLink: e.target.value }))
+                }
+                placeholder="https://..."
+                className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
 
-            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5 pt-2">
-              <Crown className="w-4 h-4" />
-              <span>GIÁ GÓI PREMIUM</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs">Gói Xem Lời Giải (một lần, 30 ngày):</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsForm.solutionPackagePrice ?? 0}
-                  onChange={e => setSettingsForm(f => ({ ...f, solutionPackagePrice: Number(e.target.value) }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs">Gói Tháng (rẻ hơn, tự động 30 ngày):</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsForm.monthlyPackagePrice ?? 0}
-                  onChange={e => setSettingsForm(f => ({ ...f, monthlyPackagePrice: Number(e.target.value) }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
-                />
+            <div className="space-y-2 pt-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <Crown className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                <span>Giá gói Premium</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">
+                    Gói xem lời giải (30 ngày)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={settingsForm.solutionPackagePrice ?? 0}
+                    onChange={e =>
+                      setSettingsForm(f => ({
+                        ...f,
+                        solutionPackagePrice: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">
+                    Gói tháng (30 ngày)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={settingsForm.monthlyPackagePrice ?? 0}
+                    onChange={e =>
+                      setSettingsForm(f => ({
+                        ...f,
+                        monthlyPackagePrice: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
               </div>
             </div>
 
-            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5 pt-2">
-              <Landmark className="w-4 h-4" />
-              <span>THÔNG TIN CHUYỂN KHOẢN (HIỂN THỊ CHO NGƯỜI MUA GÓI)</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs">Ngân Hàng:</label>
-                <input
-                  type="text"
-                  value={settingsForm.bankName || ''}
-                  onChange={e => setSettingsForm(f => ({ ...f, bankName: e.target.value }))}
-                  placeholder="VD: Vietcombank"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs">Chủ Tài Khoản:</label>
-                <input
-                  type="text"
-                  value={settingsForm.bankAccountName || ''}
-                  onChange={e => setSettingsForm(f => ({ ...f, bankAccountName: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs">Số Tài Khoản:</label>
-                <input
-                  type="text"
-                  value={settingsForm.bankAccountNumber || ''}
-                  onChange={e => setSettingsForm(f => ({ ...f, bankAccountNumber: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
-                />
+            <div className="space-y-2 pt-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+                <span>Thông tin tài khoản nhận thanh toán</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Ngân hàng</label>
+                  <input
+                    type="text"
+                    value={settingsForm.bankName || ''}
+                    onChange={e =>
+                      setSettingsForm(f => ({ ...f, bankName: e.target.value }))
+                    }
+                    placeholder="Ví dụ: Vietcombank"
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Chủ tài khoản</label>
+                  <input
+                    type="text"
+                    value={settingsForm.bankAccountName || ''}
+                    onChange={e =>
+                      setSettingsForm(f => ({
+                        ...f,
+                        bankAccountName: e.target.value,
+                      }))
+                    }
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[var(--text-secondary)]">Số tài khoản</label>
+                  <input
+                    type="text"
+                    value={settingsForm.bankAccountNumber || ''}
+                    onChange={e =>
+                      setSettingsForm(f => ({
+                        ...f,
+                        bankAccountNumber: e.target.value,
+                      }))
+                    }
+                    className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg px-3 text-[var(--text-primary)] font-mono tabular-nums focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
               </div>
             </div>
 
             {settingsMsg && (
-              <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+              <div className="p-2.5 bg-[var(--status-success-subtle)] border border-[var(--status-success)] text-[var(--status-success)] text-xs rounded-lg">
                 {settingsMsg}
               </div>
             )}
@@ -1453,48 +1692,89 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             <button
               type="submit"
               disabled={settingsSaving}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
+              className="h-9 px-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
-              {settingsSaving ? 'Đang lưu...' : 'Lưu Cài Đặt'}
+              {settingsSaving ? 'Đang lưu...' : 'Lưu cài đặt'}
             </button>
           </form>
 
-          <div className="p-5 bg-slate-900 border border-rose-900/50 rounded-2xl space-y-3">
-            <h3 className="font-cinzel text-sm font-bold text-rose-300 flex items-center gap-1.5">
-              <RotateCcw className="w-4 h-4" />
-              <span>RESET BẢNG XẾP HẠNG TUẦN</span>
+          <div className="p-5 bg-[var(--bg-surface)] border border-[var(--status-danger)]/40 rounded-xl space-y-3 text-xs">
+            <h3 className="text-sm font-semibold text-[var(--status-danger)] flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" strokeWidth={1.5} />
+              <span>Đặt lại bảng xếp hạng tuần</span>
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Hệ thống tự động reset điểm Bảng Xếp Hạng về 0đ mỗi 7 ngày. Bạn cũng có thể bấm nút dưới đây để reset thủ công ngay bây giờ.
-              Lần reset gần nhất: {settings?.lastLeaderboardReset ? new Date(settings.lastLeaderboardReset).toLocaleString('vi-VN') : '—'}.
-              (Điểm kỷ lục mọi thời đại ở mục "Tất Cả Thời Gian" không bị ảnh hưởng.)
+            <p className="text-[var(--text-secondary)] leading-relaxed">
+              Đặt lại điểm bảng xếp hạng tuần về 0đ (không ảnh hưởng điểm kỷ lục toàn thời gian). Lần đặt lại gần nhất:{' '}
+              <span className="font-mono">
+                {settings?.lastLeaderboardReset
+                  ? new Date(settings.lastLeaderboardReset).toLocaleString('vi-VN')
+                  : '—'}
+              </span>
             </p>
-            <button
-              onClick={handleResetLeaderboard}
-              disabled={resetLoading}
-              className="px-5 py-2.5 bg-gradient-to-r from-rose-700 to-red-700 hover:from-rose-600 hover:to-red-600 text-white font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
-            >
-              {resetLoading ? 'Đang reset...' : 'Reset Ngay (Về 0đ)'}
-            </button>
+            {confirmResetWeekly ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetLeaderboard}
+                  disabled={resetLoading}
+                  className="h-9 px-4 bg-[var(--status-danger)] text-white font-medium rounded-lg cursor-pointer disabled:opacity-50"
+                >
+                  {resetLoading ? 'Đang xử lý...' : 'Xác nhận đặt lại'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetWeekly(false)}
+                  className="h-9 px-4 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded-lg cursor-pointer"
+                >
+                  Hủy
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmResetWeekly(true)}
+                className="h-9 px-4 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 text-[var(--status-danger)] font-medium rounded-lg cursor-pointer"
+              >
+                Đặt lại bảng tuần về 0đ
+              </button>
+            )}
           </div>
 
-          <div className="p-5 bg-slate-900 border border-rose-900/50 rounded-2xl space-y-3">
-            <h3 className="font-cinzel text-sm font-bold text-rose-300 flex items-center gap-1.5">
-              <RotateCcw className="w-4 h-4" />
-              <span>RESET BẢNG XẾP HẠNG TOÀN THỜI GIAN</span>
+          <div className="p-5 bg-[var(--bg-surface)] border border-[var(--status-danger)]/40 rounded-xl space-y-3 text-xs">
+            <h3 className="text-sm font-semibold text-[var(--status-danger)] flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" strokeWidth={1.5} />
+              <span>Đặt lại bảng xếp hạng toàn thời gian</span>
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Đưa điểm kỷ lục "Tất Cả Thời Gian" của TOÀN BỘ người chơi về 0đ. Khác với reset tuần ở trên
-              (chỉ ảnh hưởng bảng xếp hạng tuần), thao tác này xoá sạch thành tích cao nhất mọi thời đại và
-              KHÔNG THỂ hoàn tác — chỉ dùng khi thật sự cần (ví dụ: bắt đầu mùa giải mới).
+            <p className="text-[var(--text-secondary)] leading-relaxed">
+              Đưa điểm kỷ lục toàn thời gian của tất cả người chơi về 0đ. Thao tác này không thể hoàn tác
             </p>
-            <button
-              onClick={handleResetAllTimeLeaderboard}
-              disabled={resetAllTimeLoading}
-              className="px-5 py-2.5 bg-gradient-to-r from-rose-700 to-red-700 hover:from-rose-600 hover:to-red-600 text-white font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
-            >
-              {resetAllTimeLoading ? 'Đang reset...' : 'Reset Ngay (Về 0đ)'}
-            </button>
+            {confirmResetAllTime ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetAllTimeLeaderboard}
+                  disabled={resetAllTimeLoading}
+                  className="h-9 px-4 bg-[var(--status-danger)] text-white font-medium rounded-lg cursor-pointer disabled:opacity-50"
+                >
+                  {resetAllTimeLoading ? 'Đang xử lý...' : 'Xác nhận xóa toàn bộ kỷ lục'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmResetAllTime(false)}
+                  className="h-9 px-4 bg-[var(--bg-inset)] border border-[var(--border-hairline)] text-[var(--text-secondary)] rounded-lg cursor-pointer"
+                >
+                  Hủy
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmResetAllTime(true)}
+                className="h-9 px-4 bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 text-[var(--status-danger)] font-medium rounded-lg cursor-pointer"
+              >
+                Đặt lại bảng toàn thời gian
+              </button>
+            )}
           </div>
         </div>
       )}

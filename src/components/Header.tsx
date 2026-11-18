@@ -1,8 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Music, Wifi, WifiOff, Sparkles, User, LogOut, Shield, Palette, Sun, Moon, Trash2, Smartphone, RotateCw } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Volume2,
+  VolumeX,
+  Music,
+  User,
+  LogOut,
+  Palette,
+  Sun,
+  Moon,
+  Smartphone,
+  BookOpen,
+  X,
+  Layers,
+} from 'lucide-react';
 import { sound } from '../utils/soundEffects.ts';
 import { UserProfile } from '../../shared/types.ts';
 import { ThemeDef } from '../utils/themeManager.ts';
+import { AvatarBadge } from './AvatarBadge.tsx';
 
 interface HeaderProps {
   user: { id: string; username: string; avatar: string; role: string } | null;
@@ -28,7 +42,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onLogout,
   onNavigateHome,
-  currentView,
   currentTheme,
   onOpenThemeModal,
   onToggleLightMode,
@@ -51,88 +64,88 @@ export const Header: React.FC<HeaderProps> = ({
     setIsBgmOn(bgm);
   };
 
-  // Tài khoản Khách do hệ thống tự tạo có tên dạng "Pháp Sư #1234"
   const isGuest = !!user && /^Pháp Sư #\d{4}$/.test(user.username);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-2.5 sm:px-6 py-2 sm:py-2.5 safe-pt transition-all landscape-compact-header">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-        {/* Brand Logo */}
+    <header className="sticky top-0 z-40 w-full border-b border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-4 sm:px-6 py-2 safe-pt landscape-compact-header">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        {/* Quiet Wordmark */}
         <button
           onClick={onNavigateHome}
-          className="flex items-center gap-2.5 text-left group focus:outline-none"
+          className="flex items-center gap-2 text-left rounded-lg px-1 py-1 hover:bg-[var(--bg-surface)] transition-colors duration-150"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-indigo-600 to-purple-500 p-0.5 shadow-lg shadow-indigo-950/50 group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-amber-400 font-cinzel font-bold text-lg">
-              🧮
-            </div>
-          </div>
-          <div>
-            <span className="font-cinzel text-base sm:text-lg font-black tracking-wide bg-gradient-to-r from-amber-200 via-yellow-100 to-purple-200 bg-clip-text text-transparent group-hover:text-amber-300">
-              MATH RUNE
+          <span className="w-8 h-8 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center text-[var(--accent-text)] shrink-0">
+            <Layers className="w-4 h-4" strokeWidth={1.5} />
+          </span>
+          <span className="flex items-baseline gap-2">
+            <span className="text-sm sm:text-base font-semibold text-[var(--text-primary)] tracking-tight">
+              Math Rune
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-mono tracking-widest text-indigo-400 ml-1.5 uppercase">
-              Draw & Solve
+            <span className="hidden sm:inline text-xs font-mono text-[var(--text-muted)]">
+              Draw &amp; Solve
             </span>
-          </div>
+          </span>
         </button>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
           {/* Connection Status */}
-          <div
-            className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border ${
-              connected
-                ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300'
-                : 'bg-rose-950/40 border-rose-800/50 text-rose-300 animate-pulse'
-            }`}
-          >
-            {connected ? <Wifi className="w-3.5 h-3.5 text-emerald-400" /> : <WifiOff className="w-3.5 h-3.5 text-rose-400" />}
-            <span>{connected ? 'Trực Tuyến' : 'Mất Kết Nối'}</span>
+          <div className="hidden md:flex items-center gap-2 px-3 h-8 rounded-lg text-xs font-mono border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)]">
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{
+                backgroundColor: connected ? 'var(--status-success)' : 'var(--status-danger)',
+              }}
+            />
+            <span>{connected ? 'Trực tuyến' : 'Mất kết nối'}</span>
           </div>
 
           {/* Sound Controls */}
-          <div className="flex items-center rounded-lg bg-slate-900 border border-slate-800 p-0.5">
+          <div className="flex items-center h-8 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-hairline)] p-0.5 gap-0.5">
             <button
               onClick={handleToggleMute}
               title={isMuted ? 'Bật âm thanh hiệu ứng' : 'Tắt âm thanh hiệu ứng'}
-              className={`p-1.5 rounded-md text-xs transition-colors ${
-                !isMuted ? 'text-amber-400 bg-slate-800/80' : 'text-slate-500 hover:text-slate-300'
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors duration-150 ${
+                !isMuted
+                  ? 'text-[var(--accent-text)] bg-[var(--bg-raised)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? (
+                <VolumeX className="w-4 h-4" strokeWidth={1.5} />
+              ) : (
+                <Volume2 className="w-4 h-4" strokeWidth={1.5} />
+              )}
             </button>
             <button
               onClick={handleToggleBgm}
-              title={isBgmOn ? 'Tắt nhạc nền ma thuật' : 'Bật nhạc nền ma thuật'}
-              className={`p-1.5 rounded-md text-xs transition-colors ${
-                isBgmOn ? 'text-purple-400 bg-slate-800/80' : 'text-slate-500 hover:text-slate-300'
+              title={isBgmOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors duration-150 ${
+                isBgmOn
+                  ? 'text-[var(--accent-text)] bg-[var(--bg-raised)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <Music className="w-4 h-4" />
+              <Music className="w-4 h-4" strokeWidth={1.5} />
             </button>
           </div>
 
-          {/* Quick Toggle Light / Dark Mode */}
+          {/* Toggle Light / Dark Mode */}
           {onToggleLightMode && (
             <button
               onClick={onToggleLightMode}
-              title={currentTheme.isLight ? 'Chuyển sang Giao Diện Tối' : 'Chuyển sang Giao Diện Trắng (Sáng)'}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 border ${
-                currentTheme.isLight
-                  ? 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
-                  : 'bg-slate-900 border-slate-700 text-amber-300 hover:bg-slate-800'
-              }`}
+              title={currentTheme.isLight ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
+              className="flex items-center gap-2 px-3 h-8 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-hairline)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-150"
             >
               {currentTheme.isLight ? (
                 <>
-                  <Moon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline font-bold">Giao Diện Tối</span>
+                  <Moon className="w-4 h-4" strokeWidth={1.5} />
+                  <span className="hidden lg:inline">Nền tối</span>
                 </>
               ) : (
                 <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline font-black text-amber-300">Giao Diện Trắng</span>
+                  <Sun className="w-4 h-4" strokeWidth={1.5} />
+                  <span className="hidden lg:inline">Nền sáng</span>
                 </>
               )}
             </button>
@@ -141,176 +154,129 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Theme Background Changer */}
           <button
             onClick={onOpenThemeModal}
-            title="Đổi màu nền chiến trận"
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs text-amber-300 transition-all shadow-sm hover:scale-105 active:scale-95"
+            title="Chọn màu nền"
+            className="flex items-center gap-2 px-3 h-8 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-hairline)] rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-150"
           >
-            <span className="text-sm leading-none">{currentTheme.icon}</span>
-            <span className="hidden sm:inline font-medium text-[11px] text-slate-200">Đổi Nền</span>
+            <Palette className="w-4 h-4" strokeWidth={1.5} />
+            <span className="hidden lg:inline">Bảng màu</span>
           </button>
 
-          {/* Nút Xoay Ngang Màn Hình (Mobile / Tablet Orientation Button) */}
+          {/* Orientation Toggle (Mobile / Tablet) */}
           {onToggleLandscape && (
             <button
               onClick={onToggleLandscape}
-              title={isLandscape ? 'Xoay lại màn hình dọc' : 'Xoay ngang màn hình để chơi góc rộng bàn đấu'}
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 border ${
+              title={isLandscape ? 'Xoay lại màn hình dọc' : 'Xoay ngang màn hình bàn đấu'}
+              className={`md:hidden flex items-center gap-2 px-3 h-8 rounded-lg text-xs font-medium border transition-colors duration-150 ${
                 isLandscape
-                  ? 'bg-purple-950/80 border-purple-500 text-purple-200'
-                  : 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30 ring-1 ring-amber-500/30 animate-pulse'
+                  ? 'bg-[var(--bg-raised)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <Smartphone className={`w-3.5 h-3.5 transition-transform duration-300 ${isLandscape ? 'rotate-90 text-purple-300' : 'text-amber-400'}`} />
-              <span className="hidden sm:inline font-bold">
-                {isLandscape ? 'Xoay Dọc' : 'Xoay Ngang'}
-              </span>
-              <span className="sm:hidden font-mono text-[10px] font-bold">
-                {isLandscape ? 'Dọc' : 'Ngang'}
-              </span>
+              <Smartphone
+                className={`w-4 h-4 transition-transform duration-150 ${isLandscape ? 'rotate-90' : ''}`}
+                strokeWidth={1.5}
+              />
+              <span>{isLandscape ? 'Dọc' : 'Ngang'}</span>
             </button>
           )}
 
-          {/* How To Play Guide Button */}
+          {/* How To Play Guide */}
           {onOpenHowToPlay && (
             <button
               onClick={onOpenHowToPlay}
-              title="Mở cẩm nang hướng dẫn chi tiết"
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 rounded-lg text-xs text-amber-300 transition-all shadow-sm hover:scale-105 active:scale-95"
+              title="Mở cẩm nang hướng dẫn"
+              className="flex items-center gap-2 px-3 h-8 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-hairline)] rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-150"
             >
-              <span className="text-sm leading-none">📖</span>
-              <span className="hidden sm:inline font-bold text-[11px]">Hướng Dẫn</span>
+              <BookOpen className="w-4 h-4" strokeWidth={1.5} />
+              <span className="hidden sm:inline">Hướng dẫn</span>
             </button>
           )}
 
-          {/* User Account / Profile & Level Progress */}
+          {/* User Account */}
           {user ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Clickable Profile Pill to open Account Info */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowUserMenu(true)}
-                title="Nhấn để xem thông tin tài khoản và đổi tài khoản"
-                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-xl shadow-inner active:scale-95 transition-all text-left"
+                title="Xem thông tin tài khoản"
+                className="flex items-center gap-2 px-2 h-8 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-hairline)] rounded-lg transition-colors duration-150 text-left"
               >
-                <span className="text-lg sm:text-xl leading-none">{user.avatar}</span>
-                <div className="hidden sm:block text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-200 truncate max-w-[100px]">
-                      {user.username}
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-500/40">
-                      LV.{profile?.level || 1}
-                    </span>
-                  </div>
-                  {/* XP Progress Bar */}
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <div className="w-14 h-1 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                      <div
-                        style={{ width: `${Math.min(100, Math.round(((profile?.xp || 0) % 500) / 5))}%` }}
-                        className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full"
-                      />
-                    </div>
-                    <span className="text-[9px] font-mono text-slate-400">
-                      {profile?.xp || 0} XP
-                    </span>
-                  </div>
-                </div>
+                <AvatarBadge avatar={user.avatar} size="sm" className="w-6 h-6 rounded-md border-0 bg-transparent" />
+                <span className="hidden sm:inline text-xs font-medium text-[var(--text-primary)] truncate max-w-[110px]">
+                  {user.username}
+                </span>
+                <span className="hidden md:inline text-xs font-mono tabular-nums text-[var(--text-muted)]">
+                  Cấp {profile?.level || 1}
+                </span>
               </button>
 
-              {/* Explicit LOGIN & LOGOUT Buttons */}
               {isGuest ? (
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <button
-                    onClick={onOpenAuth}
-                    title="Đăng nhập hoặc đăng ký tài khoản chính thức để lưu điểm"
-                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black rounded-lg shadow-md transition-all active:scale-95 whitespace-nowrap"
-                  >
-                    <User className="w-3.5 h-3.5" />
-                    <span>Đăng Nhập</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (confirm('Bạn có muốn đăng xuất khỏi tài khoản Khách này để đổi tài khoản khác?')) {
-                        if (onDeleteGuestAccount) onDeleteGuestAccount();
-                        else onLogout();
-                      }
-                    }}
-                    title="Đăng xuất khỏi tài khoản Khách"
-                    className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-500 text-slate-300 hover:text-rose-200 text-xs font-bold rounded-lg transition-all active:scale-95 whitespace-nowrap"
-                  >
-                    <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                    <span className="hidden sm:inline">Đăng Xuất</span>
-                  </button>
-                </div>
+                <button
+                  onClick={onOpenAuth}
+                  className="flex items-center gap-2 px-3 h-8 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] text-xs font-medium rounded-lg transition-colors duration-150 whitespace-nowrap"
+                >
+                  <User className="w-4 h-4" strokeWidth={1.5} />
+                  <span>Đăng nhập</span>
+                </button>
               ) : (
                 <button
                   onClick={onLogout}
                   title="Đăng xuất tài khoản"
-                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/70 text-rose-200 text-xs font-bold rounded-lg shadow transition-all active:scale-95 whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 h-8 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-medium rounded-lg transition-colors duration-150 whitespace-nowrap"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-rose-300" />
-                  <span>Đăng Xuất</span>
+                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                  <span className="hidden sm:inline">Đăng xuất</span>
                 </button>
               )}
             </div>
           ) : (
             <button
               onClick={onOpenAuth}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black rounded-lg shadow-md transition-all active:scale-95 whitespace-nowrap"
+              className="flex items-center gap-2 px-3 h-8 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] text-xs font-medium rounded-lg transition-colors duration-150 whitespace-nowrap"
             >
-              <User className="w-3.5 h-3.5" />
-              <span>Đăng Nhập</span>
+              <User className="w-4 h-4" strokeWidth={1.5} />
+              <span>Đăng nhập</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* USER ACCOUNT QUICK SHEET / MODAL (Easy touch on mobile) */}
+      {/* User Quick Sheet Modal */}
       {showUserMenu && user && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-xs p-5 bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-500/80 rounded-3xl shadow-2xl space-y-4 text-center">
-            {/* Header info */}
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(false)}
-                className="absolute -top-1 -right-1 p-1 text-slate-400 hover:text-slate-100 rounded-full hover:bg-slate-800"
-              >
-                ✕
-              </button>
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-950 border-2 border-amber-500/50 flex items-center justify-center text-3xl shadow-lg mb-2">
-                {user.avatar}
-              </div>
-              <h3 className="font-bold text-slate-100 text-base">{user.username}</h3>
-              <div className="flex items-center justify-center gap-2 mt-1">
-                <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-500/40">
-                  Cấp Độ: {profile?.level || 1}
-                </span>
-                {isGuest ? (
-                  <span className="text-[10px] text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                    Tài Khoản Khách
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    Đã Xác Thực
-                  </span>
-                )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="relative w-full max-w-xs p-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl shadow-[var(--shadow-panel)] space-y-4">
+            <button
+              onClick={() => setShowUserMenu(false)}
+              aria-label="Đóng"
+              className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors duration-150"
+            >
+              <X className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+
+            <div className="flex items-center gap-3 pr-8">
+              <AvatarBadge avatar={user.avatar} size="lg" />
+              <div className="min-w-0">
+                <h3 className="font-semibold text-[var(--text-primary)] text-sm truncate">
+                  {user.username}
+                </h3>
+                <div className="text-xs font-mono tabular-nums text-[var(--text-secondary)]">
+                  Cấp {profile?.level || 1} • {isGuest ? 'Tài khoản khách' : 'Đã xác thực'}
+                </div>
               </div>
             </div>
 
-            {/* XP progress */}
-            <div className="p-3 bg-slate-950/90 rounded-2xl border border-slate-800 text-left space-y-1.5">
-              <div className="flex justify-between text-xs font-mono text-slate-300">
-                <span>Tiến Trình Cấp:</span>
-                <span className="text-amber-300 font-bold">{profile?.xp || 0} XP</span>
+            <div className="p-3 bg-[var(--bg-inset)] rounded-xl border border-[var(--border-hairline)] space-y-2">
+              <div className="flex justify-between text-xs font-mono tabular-nums text-[var(--text-secondary)]">
+                <span>Kinh nghiệm tích lũy</span>
+                <span className="text-[var(--text-primary)] font-medium">{profile?.xp || 0} XP</span>
               </div>
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+              <div className="w-full h-1.5 bg-[var(--bg-raised)] rounded-full overflow-hidden">
                 <div
                   style={{ width: `${Math.min(100, Math.round(((profile?.xp || 0) % 500) / 5))}%` }}
-                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-400"
+                  className="h-full bg-[var(--accent)] rounded-full transition-[width] duration-300"
                 />
               </div>
             </div>
 
-            {/* Actions */}
             <div className="space-y-2 pt-1">
               {isGuest ? (
                 <>
@@ -319,24 +285,24 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowUserMenu(false);
                       onOpenAuth();
                     }}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 uppercase tracking-wide"
+                    className="w-full py-2 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg transition-colors duration-150 flex items-center justify-center gap-2"
                   >
-                    <User className="w-4 h-4" />
-                    <span>🔑 Đăng Nhập / Đăng Ký Tài Khoản</span>
+                    <User className="w-4 h-4" strokeWidth={1.5} />
+                    <span>Đăng nhập hoặc đăng ký</span>
                   </button>
 
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
-                      if (confirm('Bạn có muốn đăng xuất khỏi tài khoản Khách này?')) {
+                      if (confirm('Bạn có muốn đăng xuất khỏi tài khoản khách này không?')) {
                         if (onDeleteGuestAccount) onDeleteGuestAccount();
                         else onLogout();
                       }
                     }}
-                    className="w-full py-2 bg-rose-950/70 hover:bg-rose-900 border border-rose-600/50 text-rose-200 font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-4 bg-[var(--status-danger-subtle)] border border-[var(--border-hairline)] text-[var(--status-danger)] font-medium text-xs rounded-lg transition-colors duration-150 flex items-center justify-center gap-2"
                   >
-                    <LogOut className="w-4 h-4" />
-                    <span>🚪 Đăng Xuất (Xóa Phiên Khách)</span>
+                    <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                    <span>Xóa phiên khách</span>
                   </button>
                 </>
               ) : (
@@ -345,16 +311,16 @@ export const Header: React.FC<HeaderProps> = ({
                     setShowUserMenu(false);
                     onLogout();
                   }}
-                  className="w-full py-2.5 bg-rose-950 hover:bg-rose-900 border-2 border-rose-500 text-rose-100 font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-4 bg-[var(--status-danger-subtle)] border border-[var(--border-hairline)] text-[var(--status-danger)] font-medium text-xs rounded-lg transition-colors duration-150 flex items-center justify-center gap-2"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>🚪 Đăng Xuất Tài Khoản</span>
+                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                  <span>Đăng xuất tài khoản</span>
                 </button>
               )}
 
               <button
                 onClick={() => setShowUserMenu(false)}
-                className="w-full py-1.5 text-xs text-slate-400 hover:text-slate-200"
+                className="w-full py-2 px-4 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] rounded-lg transition-colors duration-150"
               >
                 Đóng
               </button>

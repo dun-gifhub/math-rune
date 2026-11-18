@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Search, Filter, Sparkles, Layers, Zap, X, Info, ShieldCheck, Trophy, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Search, Layers, X } from 'lucide-react';
 import { DECK_60_CARDS, MATH_DOMAINS } from '../../shared/cards.ts';
-import { Card, CardRarity, MathCategory } from '../../shared/types.ts';
+import { Card, CardRarity } from '../../shared/types.ts';
 import { MathCard } from './MathCard.tsx';
 import { FlipCardReveal } from './FlipCardReveal.tsx';
+import { RuneIcon } from './RuneIcon.tsx';
 import { sound } from '../utils/soundEffects.ts';
 
 interface DeckViewerProps {
@@ -30,11 +31,11 @@ export const DeckViewer: React.FC<DeckViewerProps> = ({ onBack }) => {
     return true;
   });
 
-  const rarityColors: Record<CardRarity, { label: string; bg: string; text: string; border: string }> = {
-    Common: { label: 'Phổ Biến', bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' },
-    Rare: { label: 'Hiếm', bg: 'bg-blue-950', text: 'text-blue-300', border: 'border-blue-700' },
-    Epic: { label: 'Cực Hiếm', bg: 'bg-purple-950', text: 'text-purple-300', border: 'border-purple-700' },
-    Legendary: { label: 'Huyền Thoại', bg: 'bg-amber-950', text: 'text-amber-300', border: 'border-amber-500' },
+  const rarityLabels: Record<CardRarity, string> = {
+    Common: 'Phổ biến',
+    Rare: 'Hiếm',
+    Epic: 'Cực hiếm',
+    Legendary: 'Huyền thoại',
   };
 
   const handleInspectCard = (card: Card) => {
@@ -44,142 +45,154 @@ export const DeckViewer: React.FC<DeckViewerProps> = ({ onBack }) => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 select-none">
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
+          type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-300 transition-colors cursor-pointer group"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span>Quay Lại Sảnh Chính</span>
+          <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+          <span>Quay lại sảnh chính</span>
         </button>
 
-        <div className="flex items-center gap-2 px-3 py-1 bg-amber-950/40 border border-amber-500/40 rounded-full text-xs font-mono text-amber-300 shadow">
-          <Layers className="w-3.5 h-3.5" />
-          <span>Bộ Sưu Tập: 60/60 Thẻ Đã Mở Khóa</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-md text-xs font-mono tabular-nums text-[var(--text-secondary)]">
+          <Layers className="w-4 h-4 text-[var(--accent-text)]" strokeWidth={1.5} />
+          <span>{filteredCards.length}/60 thẻ tri thức</span>
         </div>
       </div>
 
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>KHO TÀNG 60 THẺ TRI THỨC TOÁN HỌC HỌC ĐƯỜNG</span>
-        </div>
-        <h2 className="font-cinzel text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-500 drop-shadow">
-          BỘ SƯU TẬP THẺ TRI THỨC TOÁN HỌC
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">
+          Kho 60 thẻ tri thức toán học
         </h2>
-        <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto font-light">
-          Mỗi thẻ tri thức đại diện cho một Phân Môn Toán Học và mang <strong>Kỹ Năng Học Thuật</strong> kích hoạt. Nhấp vào bất kỳ thẻ nào để khám phá hiệu ứng lật 3D và thông số chi tiết!
+        <p className="text-sm text-[var(--text-secondary)] max-w-2xl">
+          Mỗi thẻ đại diện cho một phân môn toán học kèm điểm cộng và kỹ năng học thuật. Chọn thẻ bất kỳ để xem chi tiết hai mặt
         </p>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="p-4 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl space-y-3 shadow-xl">
+      <div className="p-4 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[var(--text-muted)]" strokeWidth={1.5} />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo tên lá bài, kỹ năng, hệ toán..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+              placeholder="Tìm theo tên kỹ năng, phân môn hoặc mô tả"
+              className="w-full h-9 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
 
-          {/* Rarity Selector */}
-          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
+              type="button"
               onClick={() => setSelectedRarity('all')}
-              className={`px-3 py-2 text-[11px] font-bold rounded-xl border whitespace-nowrap transition-all ${
+              className={`h-9 px-3 text-xs font-medium rounded-lg border whitespace-nowrap transition-colors cursor-pointer ${
                 selectedRarity === 'all'
-                  ? 'bg-amber-500 border-amber-400 text-slate-950 font-black shadow'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                  : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]'
               }`}
             >
-              Tất Cả Phẩm
+              Tất cả phẩm
             </button>
             {(['Common', 'Rare', 'Epic', 'Legendary'] as CardRarity[]).map(r => (
               <button
                 key={r}
+                type="button"
                 onClick={() => setSelectedRarity(r)}
-                className={`px-3 py-2 text-[11px] font-bold rounded-xl border whitespace-nowrap transition-all ${
+                className={`h-9 px-3 text-xs font-medium rounded-lg border whitespace-nowrap transition-colors cursor-pointer ${
                   selectedRarity === r
-                    ? 'bg-amber-500 border-amber-400 text-slate-950 font-black shadow'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                    : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]'
                 }`}
               >
-                {rarityColors[r].label}
+                {rarityLabels[r]}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 10 Domains Carousel / Grid */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
           <button
+            type="button"
             onClick={() => setSelectedDomain('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap border transition-colors cursor-pointer ${
               selectedDomain === 'all'
-                ? 'bg-indigo-600 text-white shadow font-bold'
-                : 'bg-slate-950 text-slate-400 hover:text-slate-200'
+                ? 'bg-[var(--bg-raised)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            Tất Cả (10 Hệ)
+            Tất cả (10 phân môn)
           </button>
-          {Object.entries(MATH_DOMAINS).map(([key, dom]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedDomain(key)}
-              style={{
-                borderColor: selectedDomain === key ? dom.color : 'transparent',
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all ${
-                selectedDomain === key
-                  ? 'bg-slate-800 text-amber-200 shadow-md scale-105 font-bold'
-                  : 'bg-slate-950 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="mr-1">{dom.icon}</span>
-              <span>{dom.nameVi}</span>
-            </button>
-          ))}
+          {Object.entries(MATH_DOMAINS).map(([key, dom]) => {
+            const isActive = selectedDomain === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedDomain(key)}
+                style={{
+                  borderColor: isActive ? dom.color : undefined,
+                }}
+                className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap border inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-[var(--bg-raised)] text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-inset)] border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <RuneIcon icon={dom.icon} className="w-4 h-4 shrink-0" style={{ color: dom.color }} />
+                <span>{dom.nameVi}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Cards Grid with AAA Card Visuals */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        {filteredCards.map(card => (
-          <MathCard
-            key={card.id}
-            card={card}
-            variant="standard"
-            onClick={() => handleInspectCard(card)}
-          />
-        ))}
-      </div>
+      {filteredCards.length === 0 ? (
+        <div className="p-10 bg-[var(--bg-surface)] border border-[var(--border-hairline)] rounded-xl text-center text-sm text-[var(--text-secondary)]">
+          Không tìm thấy thẻ phù hợp với bộ lọc hiện tại
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          {filteredCards.map(card => (
+            <MathCard
+              key={card.id}
+              card={card}
+              variant="standard"
+              onClick={() => handleInspectCard(card)}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* DETAILED CARD INSPECTION MODAL WITH 3D FLIP */}
       {inspectedCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg flex flex-col items-center">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={() => setInspectedCard(null)}
+        >
+          <div
+            className="relative w-full max-w-md flex flex-col items-center gap-4"
+            onClick={e => e.stopPropagation()}
+          >
             <button
+              type="button"
               onClick={() => setInspectedCard(null)}
-              className="absolute -top-3 -right-3 z-20 w-9 h-9 bg-slate-900 border-2 border-slate-700 hover:border-amber-400 text-slate-300 hover:text-white rounded-full flex items-center justify-center shadow-xl transition-all cursor-pointer"
+              aria-label="Đóng chi tiết thẻ"
+              className="self-end w-8 h-8 bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:bg-[var(--bg-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg flex items-center justify-center transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" strokeWidth={1.5} />
             </button>
             <FlipCardReveal card={inspectedCard} autoFlip={false} size="lg" />
-            <div className="mt-3 text-center space-y-2">
-              <p className="text-xs text-amber-300 font-mono flex items-center justify-center gap-1.5">
-                <span>✨ Chạm / Nhấp trực tiếp vào thẻ để lật 3D xem cả 2 mặt</span>
+            <div className="text-center space-y-2">
+              <p className="text-xs text-[var(--text-secondary)]">
+                Chạm trực tiếp vào thẻ để lật xem mặt trước và mặt sau
               </p>
               <button
+                type="button"
                 onClick={() => setInspectedCard(null)}
-                className="px-6 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400 text-slate-200 font-bold text-xs rounded-xl uppercase tracking-wider transition-all shadow-md cursor-pointer active:scale-95"
+                className="h-9 px-5 bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] border border-[var(--border-strong)] text-[var(--text-primary)] font-medium text-xs rounded-lg transition-colors cursor-pointer"
               >
-                Đóng Chi Tiết Thẻ
+                Đóng chi tiết thẻ
               </button>
             </div>
           </div>

@@ -1,113 +1,87 @@
 export interface ThemeDef {
   id: string;
   name: string;
-  icon: string;
   previewColor: string;
   bgHex: string;
-  bgClass: string;
-  gradientOverlay: string;
-  accentBorder: string;
+  surfaceHex: string;
+  raisedHex: string;
+  insetHex: string;
   description: string;
   isLight?: boolean;
 }
 
 export const GAME_THEMES: ThemeDef[] = [
   {
+    id: 'graphite',
+    name: 'Than chì mặc định',
+    previewColor: '#141416',
+    bgHex: '#141416',
+    surfaceHex: '#1b1c1f',
+    raisedHex: '#242529',
+    insetHex: '#101113',
+    description: 'Nền than chì trung tính, tập trung vào lá bài và đề toán',
+    isLight: false,
+  },
+  {
+    id: 'slate_ink',
+    name: 'Mực đen dịu mắt',
+    previewColor: '#16181d',
+    bgHex: '#16181d',
+    surfaceHex: '#1d2026',
+    raisedHex: '#262a32',
+    insetHex: '#111318',
+    description: 'Sắc xám than lạnh nhẹ cho phiên luyện tập ban đêm',
+    isLight: false,
+  },
+  {
+    id: 'warm_study',
+    name: 'Gỗ tối phòng đọc',
+    previewColor: '#181614',
+    bgHex: '#181614',
+    surfaceHex: '#211e1b',
+    raisedHex: '#2b2723',
+    insetHex: '#12100e',
+    description: 'Tông nâu than ấm, gợi cảm giác mặt bàn học',
+    isLight: false,
+  },
+  {
     id: 'light_pure',
-    name: 'Bạch Ngân Thánh Điện (Giao Diện Trắng)',
-    icon: '☀️',
-    previewColor: '#f8fafc',
-    bgHex: '#f8fafc',
-    bgClass: 'bg-slate-50',
-    gradientOverlay: 'from-slate-50 via-amber-50/40 to-slate-100',
-    accentBorder: 'border-slate-300',
-    description: 'Giao diện nền trắng sáng sủa, tinh khiết, chữ đen sắc nét êm dịu cho mắt.',
+    name: 'Giấy trắng học thuật',
+    previewColor: '#f6f5f1',
+    bgHex: '#f6f5f1',
+    surfaceHex: '#ffffff',
+    raisedHex: '#efede7',
+    insetHex: '#eae7df',
+    description: 'Nền sáng như trang giấy thi, chữ đậm dễ đọc ban ngày',
     isLight: true,
   },
   {
     id: 'light_ivory',
-    name: 'Bạch Kim Hoàng Gia (Trắng Ngà)',
-    icon: '✨',
-    previewColor: '#fdfbf7',
-    bgHex: '#fdfbf7',
-    bgClass: 'bg-[#fdfbf7]',
-    gradientOverlay: 'from-[#fdfbf7] via-amber-50/60 to-[#f5f0e6]',
-    accentBorder: 'border-amber-300',
-    description: 'Màu trắng ngà ánh kim sang trọng, ấm cúng và dịu nhẹ cho mọi lứa tuổi.',
+    name: 'Giấy ngà cổ điển',
+    previewColor: '#f4f0e6',
+    bgHex: '#f4f0e6',
+    surfaceHex: '#fcfaf4',
+    raisedHex: '#ebe5d7',
+    insetHex: '#e4dece',
+    description: 'Nền ngà dịu mắt, giảm chói khi đọc đề toán dài',
     isLight: true,
   },
-  {
-    id: 'void',
-    name: 'Hư Không Dạ Khúc',
-    icon: '🌌',
-    previewColor: '#252937',
-    bgHex: '#252937',
-    bgClass: 'bg-[#252937]',
-    gradientOverlay: 'from-[#252937] via-slate-800/50 to-[#252937]',
-    accentBorder: 'border-slate-700',
-    description: 'Bầu trời đêm huyền bí với sắc đen thẫm chuẩn mực.',
-  },
-  {
-    id: 'violet',
-    name: 'Cung Điện Bí Ẩn',
-    icon: '🔮',
-    previewColor: '#2d283d',
-    bgHex: '#2d283d',
-    bgClass: 'bg-[#2d283d]',
-    gradientOverlay: 'from-[#2d283d] via-purple-900/30 to-[#2d283d]',
-    accentBorder: 'border-purple-800/60',
-    description: 'Sắc tím ma thuật của các đại pháp sư cổ ngữ Rune.',
-  },
-  {
-    id: 'emerald',
-    name: 'Rừng Rậm Ma Pháp',
-    icon: '🌲',
-    previewColor: '#263631',
-    bgHex: '#263631',
-    bgClass: 'bg-[#263631]',
-    gradientOverlay: 'from-[#263631] via-emerald-900/30 to-[#263631]',
-    accentBorder: 'border-emerald-800/60',
-    description: 'Màu lục bảo rêu phong thanh tịnh và tập trung cao độ.',
-  },
-  {
-    id: 'crimson',
-    name: 'Huyết Nguyệt Chiến Trận',
-    icon: '🍷',
-    previewColor: '#38272c',
-    bgHex: '#38272c',
-    bgClass: 'bg-[#38272c]',
-    gradientOverlay: 'from-[#38272c] via-rose-900/30 to-[#38272c]',
-    accentBorder: 'border-rose-800/60',
-    description: 'Sắc đỏ thẫm hừng hực tinh thần chiến binh quyết tử.',
-  },
-  {
-    id: 'ocean',
-    name: 'Hải Triều Thần Thoại',
-    icon: '🌊',
-    previewColor: '#25343e',
-    bgHex: '#25343e',
-    bgClass: 'bg-[#25343e]',
-    gradientOverlay: 'from-[#25343e] via-sky-900/30 to-[#25343e]',
-    accentBorder: 'border-cyan-800/60',
-    description: 'Đại dương vực thẳm bao la, tri thức sâu thẳm vô biên.',
-  },
-  {
-    id: 'amber',
-    name: 'Mật Thất Cổ Thư',
-    icon: '📜',
-    previewColor: '#363128',
-    bgHex: '#363128',
-    bgClass: 'bg-[#363128]',
-    gradientOverlay: 'from-[#363128] via-amber-900/30 to-[#363128]',
-    accentBorder: 'border-amber-800/60',
-    description: 'Sắc vàng mật ong ấm áp như trang sách toán học cổ điển.',
-  },
 ];
+
+const LEGACY_MAP: Record<string, string> = {
+  void: 'graphite',
+  violet: 'slate_ink',
+  emerald: 'graphite',
+  crimson: 'warm_study',
+  ocean: 'slate_ink',
+  amber: 'warm_study',
+};
 
 export const getSavedTheme = (): ThemeDef => {
   if (typeof window === 'undefined') return GAME_THEMES[0];
   const savedId = localStorage.getItem('mathrune_theme_id');
-  const found = GAME_THEMES.find(t => t.id === savedId);
+  const mappedId = savedId ? (LEGACY_MAP[savedId] || savedId) : 'graphite';
+  const found = GAME_THEMES.find(t => t.id === mappedId);
   const theme = found || GAME_THEMES[0];
   applyThemeToDom(theme);
   return theme;
@@ -115,16 +89,19 @@ export const getSavedTheme = (): ThemeDef => {
 
 export const applyThemeToDom = (theme: ThemeDef) => {
   if (typeof window === 'undefined') return;
-  document.documentElement.style.setProperty('--bg-game', theme.bgHex);
+  const root = document.documentElement;
   if (theme.isLight) {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light-theme');
-    document.body.style.backgroundColor = theme.bgHex;
+    root.classList.remove('dark');
+    root.classList.add('light-theme');
   } else {
-    document.documentElement.classList.add('dark');
-    document.documentElement.classList.remove('light-theme');
-    document.body.style.backgroundColor = theme.bgHex;
+    root.classList.add('dark');
+    root.classList.remove('light-theme');
   }
+  root.style.setProperty('--bg-canvas', theme.bgHex);
+  root.style.setProperty('--bg-surface', theme.surfaceHex);
+  root.style.setProperty('--bg-raised', theme.raisedHex);
+  root.style.setProperty('--bg-inset', theme.insetHex);
+  document.body.style.backgroundColor = theme.bgHex;
 };
 
 export const saveTheme = (themeId: string): ThemeDef => {
@@ -135,4 +112,3 @@ export const saveTheme = (themeId: string): ThemeDef => {
   }
   return theme;
 };
-

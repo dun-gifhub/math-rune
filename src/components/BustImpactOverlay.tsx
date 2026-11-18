@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Flame, ShieldAlert, Sparkles } from 'lucide-react';
+import { ShieldAlert, Shield } from 'lucide-react';
 import { sound } from '../utils/soundEffects.ts';
 
 interface BustImpactOverlayProps {
@@ -12,49 +12,38 @@ export const BustImpactOverlay: React.FC<BustImpactOverlayProps> = ({ onDismiss 
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center bg-rose-950/70 backdrop-blur-md animate-in fade-in duration-150">
-      {/* Red Screen Shockwave Flash */}
-      <div className="absolute inset-0 bg-gradient-to-t from-red-600/30 via-rose-500/20 to-transparent pointer-events-none animate-pulse" />
-
-      {/* Cracked Glass / Shatter Overlay Box */}
-      <div className="relative text-center p-6 sm:p-10 rounded-3xl bg-slate-950/95 border-4 border-rose-500 shadow-[0_0_60px_rgba(225,29,72,0.6)] max-w-lg mx-4 animate-shake-violent select-none">
-        {/* Flame Crown */}
-        <div className="w-20 h-20 mx-auto rounded-full bg-rose-900/40 border-2 border-rose-500/80 flex items-center justify-center text-4xl mb-3 shadow-inner">
-          💥
+    <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center p-4 bg-black/75">
+      <div
+        className="relative w-full max-w-md bg-[var(--bg-surface)] border border-[var(--status-danger)] rounded-2xl p-6 text-center space-y-4 select-none"
+        style={{ boxShadow: 'var(--shadow-panel)' }}
+      >
+        <div className="w-12 h-12 mx-auto rounded-xl bg-[var(--status-danger-subtle)] border border-[var(--status-danger)]/50 flex items-center justify-center text-[var(--status-danger)]">
+          <ShieldAlert className="w-5 h-5" strokeWidth={1.5} />
         </div>
 
-        {/* BUST Title */}
-        <h2 className="font-cinzel text-5xl sm:text-6xl font-black text-rose-500 tracking-wider drop-shadow-[0_4px_20px_rgba(244,63,94,0.8)]">
-          BUST!
-        </h2>
-
-        {/* Subtitle */}
-        <div className="mt-3 flex items-center justify-center gap-2 text-amber-300 font-black text-base sm:text-lg uppercase tracking-wide">
-          <Flame className="w-5 h-5 text-rose-400" />
-          <span>NỔ LƯỢT DO RÚT TRÙNG HỆ TOÁN</span>
-          <Flame className="w-5 h-5 text-rose-400" />
+        <div className="space-y-1">
+          <div className="font-mono text-2xl font-semibold text-[var(--status-danger)] tracking-tight">
+            BUST — Trùng phân môn
+          </div>
+          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+            Thẻ vừa rút trùng phân môn toán học với thẻ đã có trên bàn. Điểm tạm thời của lượt này trở về 0 và quyền đi chuyển sang đối thủ
+          </p>
         </div>
 
-        {/* Lore & Strategy Note */}
-        <p className="text-xs text-slate-300 mt-3 leading-relaxed max-w-md mx-auto font-light">
-          Hai lá bài mang cùng một <strong>Hệ Toán Học</strong> đã xung đột năng lượng ma pháp. Điểm tạm thời lượt này về 0 và quyền đi chuyển sang đối thủ!
-        </p>
-
-        {/* Pro Tip Box */}
-        <div className="mt-4 p-3 bg-slate-900 border border-amber-500/40 rounded-2xl text-xs text-amber-200 font-medium flex items-center gap-2 text-left">
-          <span className="text-lg">🛡️</span>
+        <div className="p-3 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-lg text-xs text-[var(--text-secondary)] flex items-start gap-2.5 text-left">
+          <Shield className="w-4 h-4 text-[var(--accent-text)] shrink-0 mt-0.5" strokeWidth={1.5} />
           <span>
-            <strong>Chiến thuật:</strong> Rút 2-3 lá có điểm số tốt rồi bấm <strong>[BANK]</strong> để chốt điểm vào Kho An Toàn, hoặc trang bị <strong>Rune Khiên Hộ Thân</strong> để chặn 1 lần BUST!
+            Mẹo chiến thuật: Chốt điểm sớm bằng nút BANK khi đã có 2–3 thẻ điểm cao, hoặc dùng cổ ngữ Khiên chắn để chặn một lần BUST
           </span>
         </div>
 
-        {/* Quick Close Button */}
         {onDismiss && (
           <button
+            type="button"
             onClick={onDismiss}
-            className="mt-5 px-8 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-cinzel font-black text-xs rounded-xl shadow-lg transition-transform active:scale-95 uppercase tracking-wider cursor-pointer"
+            className="w-full h-10 bg-[var(--status-danger)] hover:opacity-90 text-white font-medium text-sm rounded-lg transition-opacity cursor-pointer"
           >
-            TIẾP TỤC TRẬN ĐẤU
+            Tiếp tục trận đấu
           </button>
         )}
       </div>

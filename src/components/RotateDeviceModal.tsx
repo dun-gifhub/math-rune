@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, RotateCw, X, ExternalLink, Sparkles, Check, Monitor } from 'lucide-react';
+import { Smartphone, X, ExternalLink, Monitor, AlertTriangle, Info } from 'lucide-react';
 
 interface RotateDeviceModalProps {
   isOpen: boolean;
@@ -21,99 +21,86 @@ export const RotateDeviceModal: React.FC<RotateDeviceModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm p-5 sm:p-6 bg-gradient-to-b from-slate-900 to-indigo-950/95 border-2 border-amber-500/80 rounded-3xl shadow-2xl text-center space-y-4">
-        {/* Close Button */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+      <div className="relative w-full max-w-sm p-6 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl text-left space-y-4 shadow-[var(--shadow-panel)]">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-100 rounded-full hover:bg-slate-800 transition-colors"
+          aria-label="Đóng"
+          className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors duration-150"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" strokeWidth={1.5} />
         </button>
 
-        {/* Animated Phone Graphic */}
-        <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-          <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
-          <div className="w-14 h-14 rounded-2xl bg-slate-950/90 border border-amber-400/50 flex items-center justify-center shadow-lg relative">
-            <Smartphone className="w-7 h-7 text-amber-400" />
-            <RotateCw
-              className="w-4 h-4 text-yellow-300 absolute -bottom-1 -right-1 animate-spin"
-              style={{ animationDuration: '4s' }}
-            />
+        <div className="flex items-center gap-3 pr-8">
+          <div className="w-10 h-10 rounded-xl bg-[var(--bg-raised)] border border-[var(--border-hairline)] flex items-center justify-center text-[var(--accent-text)] shrink-0">
+            <Smartphone className="w-4 h-4 rotate-90" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">
+              Xoay ngang bàn đấu
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)]">
+              Mở rộng không gian quan sát thẻ bài và đề toán
+            </p>
           </div>
         </div>
 
-        <div className="space-y-1">
-          <h3 className="font-cinzel text-base font-bold text-amber-300 tracking-wide">
-            XOAY NGANG BÀN ĐẤU TOÁN HỌC
-          </h3>
-          <p className="text-xs text-indigo-200">
-            Trải nghiệm góc rộng chuẩn đấu trường thẻ bài TCG
-          </p>
-        </div>
-
-        {/* Note if inside iframe */}
         {isInIframe ? (
-          <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-xl text-left text-xs text-amber-200 space-y-1">
-            <div className="font-bold flex items-center gap-1.5 text-amber-300">
-              <span>⚠️</span>
-              <span>Đang mở trong khung xem trước / ứng dụng nhúng:</span>
+          <div className="p-3 bg-[var(--accent-subtle)] border border-[var(--border-hairline)] rounded-xl text-xs text-[var(--text-primary)] space-y-1">
+            <div className="font-medium flex items-center gap-2 text-[var(--accent-text)]">
+              <AlertTriangle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <span>Đang mở trong khung xem trước</span>
             </div>
-            <p className="text-[11px] text-slate-300">
-              Khung xem trước của ứng dụng đang khóa cố định màn hình dọc. Để xoay ngang cảm biến tự nhiên và thao tác chạm tốt nhất, hãy bấm <strong>[Mở Tab Mới Safari / Chrome]</strong> bên dưới!
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Khung xem trước giữ cố định chiều dọc. Để xoay ngang tự nhiên trên thiết bị, hãy mở trang trong tab trình duyệt riêng.
             </p>
           </div>
         ) : (
-          <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-left text-xs text-slate-300 space-y-1.5">
-            <div className="font-bold text-slate-200 flex items-center gap-1">
-              <span>💡</span>
-              <span>Hướng dẫn xoay ngang trên điện thoại:</span>
+          <div className="p-3 bg-[var(--bg-inset)] border border-[var(--border-hairline)] rounded-xl text-xs text-[var(--text-secondary)] space-y-1">
+            <div className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+              <Info className="w-4 h-4 text-[var(--text-secondary)] shrink-0" strokeWidth={1.5} />
+              <span>Hướng dẫn xoay ngang</span>
             </div>
-            <p className="text-[11px] leading-relaxed">
-              Vuốt bảng điều khiển điện thoại, bật <strong>Khóa Xoay (Auto-Rotate)</strong> và cầm ngang điện thoại. Giao diện sẽ tự động co giãn góc rộng!
+            <p className="text-xs leading-relaxed">
+              Mở bảng điều khiển thiết bị, bật chế độ tự động xoay màn hình và xoay ngang điện thoại.
             </p>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="space-y-2 pt-1">
-          {/* Button 1: Open external tab */}
+        <div className="space-y-2 pt-2">
           {onOpenExternal && (
             <button
               onClick={() => {
                 onOpenExternal();
                 onClose();
               }}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 uppercase tracking-wide"
+              className="w-full py-2 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-fg)] font-medium text-xs rounded-lg transition-colors duration-150 flex items-center justify-center gap-2"
             >
-              <ExternalLink className="w-4 h-4" />
-              <span>Mở Tab Mới Trên Safari / Chrome</span>
+              <ExternalLink className="w-4 h-4" strokeWidth={1.5} />
+              <span>Mở tab mới trên trình duyệt</span>
             </button>
           )}
 
-          {/* Button 2: Toggle Compact Widescreen Arena Mode on Portrait */}
           {onToggleCompact && (
             <button
               onClick={() => {
                 onToggleCompact();
                 onClose();
               }}
-              className="w-full py-2 bg-indigo-900/80 hover:bg-indigo-800 border border-indigo-500/60 text-indigo-100 font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              className="w-full py-2 px-4 bg-[var(--bg-raised)] hover:bg-[var(--bg-inset)] border border-[var(--border-strong)] text-[var(--text-primary)] font-medium text-xs rounded-lg transition-colors duration-150 flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Monitor className="w-4 h-4 text-[var(--text-secondary)]" strokeWidth={1.5} />
               <span>
-                {isWidescreenCompact
-                  ? 'Tắt Chế Độ Bàn Đấu Thu Gọn'
-                  : 'Bật Chế Độ Bàn Đấu Gọn Gàng (Cầm Dọc)'}
+                {isWidescreenCompact ? 'Tắt chế độ bàn đấu gọn' : 'Bật chế độ bàn đấu gọn'}
               </span>
             </button>
           )}
 
           <button
             onClick={onClose}
-            className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs rounded-xl transition-all"
+            className="w-full py-2 px-4 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] rounded-lg transition-colors duration-150"
           >
-            Đã Hiểu & Đóng
+            Đóng
           </button>
         </div>
       </div>
