@@ -1,0 +1,1503 @@
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Shield, Plus, Trash2, Database, Users, BookOpen, CheckCircle, RefreshCw, Lock, KeyRound, Settings, Crown, UserX, XCircle, Link2, Landmark, RotateCcw, Sparkles, Globe, ExternalLink } from 'lucide-react';
+import { MathLevel, MathCategory, Question, SiteSettings, PremiumRequest, PremiumPlan } from '../../shared/types.ts';
+import { MATH_DOMAINS } from '../../shared/cards.ts';
+
+function formatVnd(n: number) {
+  return (n || 0).toLocaleString('vi-VN') + 'đ';
+}
+
+interface AdminPanelProps {
+  onBack: () => void;
+  currentUserRole?: string;
+}
+
+const ADMIN_KEY_STORAGE = 'mathrune_admin_key';
+
+const isUserGuest = (u: any) => !!(u.isGuest || u.role === 'guest' || u.accountType === 'guest');
+const isUserPro = (u: any) => !!u.isPremium && (!u.premiumExpiresAt || new Date(u.premiumExpiresAt).getTime() > Date.now());
+
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+  // ------- Password gate -------
+  const [adminKey, setAdminKey] = useState<string>(() => sessionStorage.getItem(ADMIN_KEY_STORAGE) || '');
+  const [authed, setAuthed] = useState(false);
+  const [pwInput, setPwInput] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const verifyKey = async (key: string, opts?: { silent?: boolean }) => {
+    if (!key) return false;
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: key }),
+      });
+      if (res.ok) {
+        setAuthed(true);
+        setAdminKey(key);
+        sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
+        return true;
+      }
+      if (!opts?.silent) {
+        const d = await res.json().catch(() => ({}));
+        setAuthError(d.error || 'Sai mật khẩu quản trị.');
+      }
+      sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+      return false;
+    } catch (e) {
+      if (!opts?.silent) setAuthError('Không kết nối được máy chủ.');
+      return false;
+    }
+  };
+
+  // Try to silently re-auth with a key saved earlier this session
+  useEffect(() => {
+    if (adminKey) verifyKey(adminKey, { silent: true });
+  }, []);
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthLoading(true);
+    await verifyKey(pwInput);
+    setAuthLoading(false);
+  };
+
+  const adminHeaders = { 'Content-Type': 'application/json', 'x-admin-key': adminKey };
+
+  // ------- Panel state (only used once authed) -------
+  const [stats, setStats] = useState<any>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'stats' | 'questions' | 'users' | 'premium' | 'settings'>('stats');
+
+  // Premium requests state
+  const [premiumRequests, setPremiumRequests] = useState<PremiumRequest[]>([]);
+  const [premiumActionMsg, setPremiumActionMsg] = useState<string | null>(null);
+
+  // Settings state
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settingsForm, setSettingsForm] = useState<Partial<SiteSettings>>({});
+  const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  // User management state: filtering, search, and Pro package controls
+  const [userFilter, setUserFilter] = useState<'all' | 'registered' | 'guest' | 'pro'>('all');
+  const [userSearch, setUserSearch] = useState('');
+  const [customGrantUsername, setCustomGrantUsername] = useState('');
+  const [customGrantDays, setCustomGrantDays] = useState<number>(30);
+  const [customGrantPlan, setCustomGrantPlan] = useState<'monthly' | 'solution'>('monthly');
+  const [grantActionMsg, setGrantActionMsg] = useState<string | null>(null);
+  const [grantActionLoading, setGrantActionLoading] = useState(false);
+
+  // New question form state
+  const [qText, setQText] = useState('');
+  const [qFormula, setQFormula] = useState('');
+  const [qAnswer, setQAnswer] = useState('');
+  const [qOptions, setQOptions] = useState('');
+  const [qExplanation, setQExplanation] = useState('');
+  const [qCategory, setQCategory] = useState<MathCategory>('NGUYEN_TO');
+  const [qLevel, setQLevel] = useState<MathLevel>('THCS');
+  const [qTimeLimit, setQTimeLimit] = useState(15);
+  const [formMsg, setFormMsg] = useState<string | null>(null);
+  // AI Question Generator state (từ nguồn web toán học uy tín)
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCategory, setAiCategory] = useState<MathCategory>('NGUYEN_TO');
+  const [aiLevel, setAiLevel] = useState<MathLevel>('THCS');
+  const [aiPreferredSource, setAiPreferredSource] = useState('VietJack Chuyên Đề Toán (vietjack.com)');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratedQuestion, setAiGeneratedQuestion] = useState<Question | null>(null);
+  const [aiSuccessMsg, setAiSuccessMsg] = useState<string | null>(null);
+  const [aiErrorMsg, setAiErrorMsg] = useState<string | null>(null);
+  const [aiSavingToDb, setAiSavingToDb] = useState(false);
+
+  const fetchStats = () => {
+    fetch('/api/admin/stats', { headers: adminHeaders })
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(e => console.warn(e));
+  };
+
+  const fetchQuestions = () => {
+    fetch('/api/questions')
+      .then(res => res.json())
+      .then(data => setQuestions(Array.isArray(data) ? data : []))
+      .catch(e => console.warn(e));
+  };
+
+  const fetchUsers = () => {
+    fetch('/api/admin/users', { headers: adminHeaders })
+      .then(res => res.json())
+      .then(data => setUsers(Array.isArray(data) ? data : []))
+      .catch(e => console.warn(e));
+  };
+
+  const fetchPremiumRequests = () => {
+    fetch('/api/admin/premium/requests', { headers: adminHeaders })
+      .then(res => res.json())
+      .then(data => setPremiumRequests(Array.isArray(data) ? data : []))
+      .catch(e => console.warn(e));
+  };
+
+  const fetchSettings = () => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        setSettings(data);
+        setSettingsForm(data);
+      })
+      .catch(e => console.warn(e));
+  };
+
+  useEffect(() => {
+    if (!authed) return;
+    fetchStats();
+    fetchQuestions();
+    fetchUsers();
+    fetchPremiumRequests();
+    fetchSettings();
+  }, [authed]);
+
+  const handleAddQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qText.trim() || !qAnswer.trim()) {
+      setFormMsg('Vui lòng nhập câu hỏi và đáp án.');
+      return;
+    }
+
+    const optionsArray = qOptions.trim()
+      ? qOptions.split(',').map(s => s.trim()).filter(Boolean)
+      : undefined;
+
+    try {
+      const res = await fetch('/api/admin/questions', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          question: qText,
+          formula: qFormula || undefined,
+          answer: qAnswer,
+          options: optionsArray,
+          explanation: qExplanation,
+          category: qCategory,
+          level: qLevel,
+          timeLimit: Number(qTimeLimit),
+        }),
+      });
+
+      if (res.ok) {
+        setFormMsg('✓ Đã thêm câu hỏi vào Ngân Hàng Đề!');
+        setQText('');
+        setQFormula('');
+        setQAnswer('');
+        setQOptions('');
+        setQExplanation('');
+        fetchQuestions();
+        fetchStats();
+        setTimeout(() => setFormMsg(null), 3000);
+      } else {
+        const d = await res.json();
+        setFormMsg(`Lỗi: ${d.error}`);
+      }
+    } catch (err: any) {
+      setFormMsg(`Lỗi kết nối: ${err.message}`);
+    }
+  };
+
+  // Sinh câu hỏi thông minh bằng AI từ nguồn web toán học uy tín
+  const handleGenerateAiQuestion = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setAiGenerating(true);
+    setAiErrorMsg(null);
+    setAiSuccessMsg(null);
+    try {
+      const res = await fetch('/api/admin/ai/generate-question', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          topic: aiTopic,
+          category: aiCategory,
+          level: aiLevel,
+          preferredSource: aiPreferredSource,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Không thể sinh câu hỏi AI.');
+      }
+      setAiGeneratedQuestion(data.question);
+      setAiSuccessMsg('✨ Đã sinh thành công 01 câu hỏi toán học uy tín có thẩm định!');
+    } catch (err: any) {
+      setAiErrorMsg(err?.message || 'Lỗi khi sinh câu hỏi AI.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  // Lưu câu hỏi vừa sinh bằng AI vào ngân hàng đề thi đấu
+  const handleSaveAiQuestionToBank = async () => {
+    if (!aiGeneratedQuestion) return;
+    setAiSavingToDb(true);
+    setAiErrorMsg(null);
+    setAiSuccessMsg(null);
+    try {
+      const res = await fetch('/api/admin/questions', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify(aiGeneratedQuestion),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Lỗi lưu câu hỏi vào ngân hàng.');
+      }
+      setAiSuccessMsg('🎉 Đã thêm thành công câu hỏi vào Ngân Hàng Đề thi đấu!');
+      setAiGeneratedQuestion(null);
+      fetchQuestions();
+      fetchStats();
+    } catch (err: any) {
+      setAiErrorMsg(err?.message || 'Lỗi lưu câu hỏi.');
+    } finally {
+      setAiSavingToDb(false);
+    }
+  };
+
+  const handleDeleteQuestion = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) return;
+    try {
+      await fetch(`/api/admin/questions/${id}`, { method: 'DELETE', headers: adminHeaders });
+      fetchQuestions();
+      fetchStats();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  // ------- Xóa tài khoản người dùng (chỉ 1 tài khoản Admin duy nhất, không thể xóa) -------
+  const handleDeleteUser = async (u: any) => {
+    if (!confirm(`Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản "${u.username}"? Toàn bộ hồ sơ, lịch sử trận đấu sẽ bị mất và không thể hoàn tác!`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE', headers: adminHeaders });
+      const d = await res.json();
+      if (res.ok) {
+        fetchUsers();
+        fetchStats();
+      } else {
+        alert(d.error || 'Không thể xóa tài khoản.');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  // ------- Xóa toàn bộ tài khoản Chơi Nhanh (Khách) -------
+  const handleDeleteAllGuests = async () => {
+    const currentGuests = users.filter(u => isUserGuest(u));
+    if (!confirm(`Bạn có chắc chắn muốn XÓA TẤT CẢ ${currentGuests.length} tài khoản Chơi Nhanh (Khách)? Toàn bộ dữ liệu tạm của các tài khoản này sẽ được dọn sạch hoàn toàn!`)) return;
+    try {
+      const res = await fetch('/api/admin/users/guests', { method: 'DELETE', headers: adminHeaders });
+      const d = await res.json();
+      if (res.ok) {
+        alert(d.message || `Đã xóa thành công ${d.count} tài khoản Chơi Nhanh!`);
+        fetchUsers();
+        fetchStats();
+      } else {
+        alert(d.error || 'Lỗi xóa tài khoản Chơi Nhanh.');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  // ------- Cấp / Thu hồi / Gia hạn Gói PRO thủ công (bằng ID hoặc Tên tài khoản) -------
+  const handleGrantPremium = async (userId: string, plan: PremiumPlan = 'monthly', days: number = 30) => {
+    try {
+      const res = await fetch('/api/admin/premium/grant', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ userId, plan, days }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || `Đã gia hạn thành công gói PRO thêm ${days} ngày!`);
+        fetchUsers();
+        fetchStats();
+      } else {
+        alert(data.error || 'Lỗi cấp gói PRO.');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleRevokePremium = async (userId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn gỡ bỏ gói PRO của tài khoản này không?')) return;
+    try {
+      const res = await fetch('/api/admin/premium/revoke', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Đã gỡ gói PRO thành công!');
+        fetchUsers();
+        fetchStats();
+      } else {
+        alert(data.error || 'Lỗi gỡ gói PRO.');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleCustomGrantByUsername = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customGrantUsername.trim()) return;
+    setGrantActionLoading(true);
+    setGrantActionMsg(null);
+    try {
+      const res = await fetch('/api/admin/premium/grant', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({
+          username: customGrantUsername.trim(),
+          plan: customGrantPlan,
+          days: customGrantDays,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGrantActionMsg(`✓ ${data.message || 'Đã gia hạn gói PRO thành công!'}`);
+        setCustomGrantUsername('');
+        fetchUsers();
+        fetchStats();
+      } else {
+        setGrantActionMsg(data.error || 'Lỗi gia hạn gói PRO.');
+      }
+    } catch {
+      setGrantActionMsg('Lỗi kết nối máy chủ.');
+    } finally {
+      setGrantActionLoading(false);
+      setTimeout(() => setGrantActionMsg(null), 5000);
+    }
+  };
+
+  // ------- Duyệt / Từ chối yêu cầu mua gói Premium -------
+  const handleResolvePremiumRequest = async (id: string, approve: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/premium/requests/${id}/${approve ? 'approve' : 'reject'}`, {
+        method: 'POST',
+        headers: adminHeaders,
+      });
+      if (res.ok) {
+        setPremiumActionMsg(approve ? '✓ Đã duyệt và kích hoạt Premium cho người dùng!' : 'Đã từ chối yêu cầu.');
+        fetchPremiumRequests();
+        fetchUsers();
+        fetchStats();
+        setTimeout(() => setPremiumActionMsg(null), 3000);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  // ------- Cài đặt hệ thống: link hướng dẫn, giá gói, thông tin chuyển khoản -------
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsSaving(true);
+    setSettingsMsg(null);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: adminHeaders,
+        body: JSON.stringify(settingsForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings(data);
+        setSettingsMsg('✓ Đã lưu cài đặt!');
+      } else {
+        setSettingsMsg(`Lỗi: ${data.error}`);
+      }
+    } catch (err: any) {
+      setSettingsMsg(`Lỗi kết nối: ${err.message}`);
+    } finally {
+      setSettingsSaving(false);
+      setTimeout(() => setSettingsMsg(null), 3000);
+    }
+  };
+
+  // ------- Reset Bảng Xếp Hạng tuần (điểm về 0đ) -------
+  const handleResetLeaderboard = async () => {
+    if (!confirm('Xóa Bảng Xếp Hạng Tuần và đưa điểm của TẤT CẢ người chơi về 0đ? (Điểm kỷ lục mọi thời đại vẫn được giữ nguyên)')) return;
+    setResetLoading(true);
+    try {
+      const res = await fetch('/api/admin/leaderboard/reset', { method: 'POST', headers: adminHeaders });
+      const d = await res.json();
+      if (res.ok) {
+        setSettings(prev => prev ? { ...prev, lastLeaderboardReset: d.settings.lastLeaderboardReset } : prev);
+        setSettingsMsg('✓ Đã reset Bảng Xếp Hạng Tuần về 0đ!');
+        setTimeout(() => setSettingsMsg(null), 3000);
+      }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // ------- Reset Bảng Xếp Hạng TOÀN THỜI GIAN (điểm kỷ lục mọi thời đại về 0đ) -------
+  const [resetAllTimeLoading, setResetAllTimeLoading] = useState(false);
+  const handleResetAllTimeLeaderboard = async () => {
+    if (!confirm('Xóa Bảng Xếp Hạng TOÀN THỜI GIAN và đưa điểm kỷ lục mọi thời đại của TẤT CẢ người chơi về 0đ? Thao tác này KHÔNG THỂ hoàn tác!')) return;
+    setResetAllTimeLoading(true);
+    try {
+      const res = await fetch('/api/admin/leaderboard/reset-alltime', { method: 'POST', headers: adminHeaders });
+      if (res.ok) {
+        setSettingsMsg('✓ Đã reset Bảng Xếp Hạng Toàn Thời Gian về 0đ!');
+        setTimeout(() => setSettingsMsg(null), 3000);
+      }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setResetAllTimeLoading(false);
+    }
+  };
+
+  // ------- Locked screen: shown until the correct admin password is entered -------
+  if (!authed) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-10">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Quay Lại Sảnh Chính</span>
+        </button>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-950/60 border border-amber-700/40 text-amber-400 shadow-inner">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h3 className="font-cinzel text-lg font-black text-amber-100">KHU VỰC QUẢN TRỊ</h3>
+          <p className="text-xs text-slate-400">
+            Nhập mật khẩu Admin để tiếp tục. Khu vực này không dành cho khách hay người chơi thường.
+          </p>
+
+          <form onSubmit={handleAuthSubmit} className="space-y-3 text-left">
+            <div className="relative">
+              <KeyRound className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+              <input
+                type="password"
+                autoFocus
+                required
+                value={pwInput}
+                onChange={e => setPwInput(e.target.value)}
+                placeholder="Mật khẩu Admin"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 transition-colors"
+              />
+            </div>
+
+            {authError && (
+              <div className="p-2.5 bg-rose-950/50 border border-rose-800 text-rose-300 text-xs rounded-xl">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+            >
+              {authLoading ? 'Đang kiểm tra...' : 'Mở Khóa'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Quay Lại Sảnh Chính</span>
+        </button>
+
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-950/40 border border-amber-800/40 rounded-full text-xs font-mono text-amber-300">
+          <Shield className="w-3.5 h-3.5 text-amber-400" />
+          <span>Trang Quản Trị Hệ Thống (Admin Panel)</span>
+        </div>
+      </div>
+
+      <div className="text-center space-y-1">
+        <h2 className="font-cinzel text-2xl sm:text-3xl font-black text-amber-200">
+          QUẢN TRỊ VIÊN & HỆ THỐNG
+        </h2>
+        <p className="text-xs text-slate-400">
+          Giám sát tài nguyên máy chủ, quản lý ngân hàng câu hỏi toán học và danh sách pháp sư.
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap justify-center gap-2">
+        {[
+          { id: 'stats', label: '📊 Tổng Quan Máy Chủ' },
+          { id: 'questions', label: '🧮 Ngân Hàng Câu Hỏi' },
+          { id: 'users', label: '👥 Người Dùng' },
+          { id: 'premium', label: '💎 Gói Premium' },
+          { id: 'settings', label: '⚙️ Cài Đặt' },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id as any)}
+            className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+              activeTab === t.id
+                ? 'bg-amber-600 border-amber-400 text-slate-950 shadow-md'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* TAB 1: SYSTEM STATS */}
+      {activeTab === 'stats' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Tổng Người Dùng</div>
+              <div className="text-2xl font-black text-amber-300 font-mono mt-1">
+                {stats?.totalUsers ?? '...'}
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Tổng Câu Hỏi Toán</div>
+              <div className="text-2xl font-black text-indigo-300 font-mono mt-1">
+                {stats?.totalQuestions ?? '...'}
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Bộ Bài 10 Hệ</div>
+              <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
+                {stats?.totalCards ?? 60} Lá
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Bộ Ấn Chú</div>
+              <div className="text-2xl font-black text-purple-300 font-mono mt-1">
+                {stats?.totalRunes ?? 16} Rune
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-yellow-800/50 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Thành Viên Premium</div>
+              <div className="text-2xl font-black text-yellow-300 font-mono mt-1">
+                {stats?.totalPremiumUsers ?? 0}
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-indigo-800/50 rounded-2xl text-center">
+              <div className="text-xs text-slate-400">Yêu Cầu Premium Chờ Duyệt</div>
+              <div className="text-2xl font-black text-indigo-300 font-mono mt-1">
+                {stats?.pendingPremiumRequests ?? 0}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 text-xs font-mono text-slate-300">
+            <div className="flex justify-between">
+              <span>Trạng Thái Hệ Thống:</span>
+              <span className="text-emerald-400 font-bold">● Đang Hoạt Động (Healthy)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Bộ Nhớ RAM Đang Chiếm:</span>
+              <span className="text-amber-300">{stats?.activeMemoryUsage ?? '34 MB'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Engine Đồng Bộ:</span>
+              <span className="text-indigo-300">WebSocket Authoritative Server</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: QUESTIONS MANAGEMENT */}
+      {activeTab === 'questions' && (
+        <div className="space-y-6">
+          {/* AI QUESTION GENERATOR FROM CREDIBLE WEBSITES */}
+          <div className="p-5 bg-gradient-to-br from-indigo-950/90 via-slate-900 to-purple-950/90 border-2 border-indigo-500/50 rounded-2xl space-y-4 shadow-2xl relative overflow-hidden">
+            {/* Ambient runic glow */}
+            <div className="absolute -top-10 -right-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-800/40 pb-3">
+              <div>
+                <h3 className="font-cinzel text-base font-bold text-amber-300 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                  <span>SINH ĐỀ TOÁN HỌC BẰNG AI (NGUỒN WEB UY TÍN)</span>
+                </h3>
+                <p className="text-[11px] text-indigo-200/80 mt-0.5">
+                  Mô hình AI đối chiếu và trích xuất câu hỏi toán học chuẩn mực từ: VietJack, VMF Diễn Đàn Toán Học, Lời Giải Hay, MathVN, Khan Academy, Bộ GD&ĐT.
+                </p>
+              </div>
+              <span className="self-start sm:self-auto px-2.5 py-1 bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 rounded-full text-[11px] font-mono flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Kết Quả & Lời Giải Thẩm Định</span>
+              </span>
+            </div>
+
+            {aiSuccessMsg && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-600 text-emerald-200 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{aiSuccessMsg}</span>
+              </div>
+            )}
+
+            {aiErrorMsg && (
+              <div className="p-3 bg-rose-950/80 border border-rose-600 text-rose-200 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
+                <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{aiErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleGenerateAiQuestion} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Chọn Nguồn Toán Học Uy Tín */}
+                <div>
+                  <label className="block text-indigo-200 font-semibold mb-1 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Nguồn Web Uy Tín Ưu Tiên:</span>
+                  </label>
+                  <select
+                    value={aiPreferredSource}
+                    onChange={e => setAiPreferredSource(e.target.value)}
+                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="VietJack Chuyên Đề Toán (vietjack.com)">🌐 VietJack Chuyên Đề Toán (vietjack.com)</option>
+                    <option value="Diễn đàn Toán học Việt Nam (diendantoanhoc.org - VMF)">🌐 Diễn đàn Toán học VMF (diendantoanhoc.org)</option>
+                    <option value="Lời Giải Hay (loigiaihay.com)">🌐 Lời Giải Hay (loigiaihay.com)</option>
+                    <option value="MathVN Chuyên Toán (mathvn.com)">🌐 MathVN Chuyên Toán (mathvn.com)</option>
+                    <option value="Khan Academy Math (vi.khanacademy.org)">🌐 Khan Academy Math (vi.khanacademy.org)</option>
+                    <option value="Bộ GD&ĐT - Đề Thi Tuyển Sinh Chuẩn">🌐 Bộ GD&ĐT - Đề Thi Chuẩn Quốc Gia</option>
+                  </select>
+                </div>
+
+                {/* Chọn Phân Môn */}
+                <div>
+                  <label className="block text-indigo-200 font-semibold mb-1">Phân Môn Toán Học:</label>
+                  <select
+                    value={aiCategory}
+                    onChange={e => setAiCategory(e.target.value as any)}
+                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  >
+                    {Object.entries(MATH_DOMAINS).map(([k, v]) => (
+                      <option key={k} value={k}>{v.nameVi} ({k})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Chọn Cấp Độ */}
+                <div>
+                  <label className="block text-indigo-200 font-semibold mb-1">Cấp Độ Đối Tượng:</label>
+                  <select
+                    value={aiLevel}
+                    onChange={e => setAiLevel(e.target.value as any)}
+                    className="w-full bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="THCS">THCS (Lớp 6 - Lớp 9)</option>
+                    <option value="THPT">THPT (Lớp 10 - Lớp 12)</option>
+                    <option value="CO_BAN">Cơ Bản (Tiểu Học Lớp 1 - 5)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Nhập Chủ Đề / Từ Khóa */}
+              <div>
+                <label className="block text-indigo-200 font-semibold mb-1">
+                  Chủ Đề / Từ Khóa Cụ Thể (Tùy chọn):
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={aiTopic}
+                    onChange={e => setAiTopic(e.target.value)}
+                    placeholder="VD: Số nguyên tố & Ước số chung, Định lý Pythagoras, Bất đẳng thức Cauchy, Đạo hàm tiếp tuyến..."
+                    className="flex-1 bg-slate-950/90 border border-indigo-700/60 rounded-xl px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={aiGenerating}
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
+                        <span>Đang Đối Chiếu & Sinh Đề...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-slate-950" />
+                        <span>SINH ĐỀ AI NGAY</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* AI Generated Question Result Card */}
+            {aiGeneratedQuestion && (
+              <div className="p-4 bg-slate-950/90 border-2 border-amber-500/60 rounded-xl space-y-3 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 font-mono">
+                      ✨ ĐỀ THI VỪA SINH
+                    </span>
+                    {aiGeneratedQuestion.sourceName && (
+                      <a
+                        href={aiGeneratedQuestion.sourceUrl || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-950 text-sky-300 border border-sky-700/60 hover:border-sky-400 transition-colors"
+                      >
+                        <Globe className="w-3 h-3 text-sky-400" />
+                        <span>Nguồn: {aiGeneratedQuestion.sourceName}</span>
+                        <ExternalLink className="w-2.5 h-2.5 text-sky-400" />
+                      </a>
+                    )}
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Cấp: {aiGeneratedQuestion.level} • Hệ: {aiGeneratedQuestion.category}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-sm font-bold text-slate-100 leading-relaxed">
+                  {aiGeneratedQuestion.question}
+                </div>
+
+                {/* 4 Choices */}
+                {aiGeneratedQuestion.options && aiGeneratedQuestion.options.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {aiGeneratedQuestion.options.map((opt, idx) => {
+                      const isCorrect = opt.trim() === aiGeneratedQuestion.answer.trim();
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 font-mono ${
+                            isCorrect
+                              ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200 font-bold ring-1 ring-emerald-500/50'
+                              : 'bg-slate-900 border-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <span>
+                            <strong className="text-amber-300 mr-2">{String.fromCharCode(65 + idx)}.</strong>
+                            {opt}
+                          </span>
+                          {isCorrect && (
+                            <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-md">
+                              ĐÁP ÁN ĐÚNG
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Explanation */}
+                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300 space-y-1">
+                  <div className="text-[11px] font-bold text-amber-300 font-mono flex items-center gap-1.5">
+                    <span>📖 LỜI GIẢI THÍCH CHI TIẾT (ĐÃ THẨM ĐỊNH):</span>
+                  </div>
+                  <p className="leading-relaxed text-slate-200">{aiGeneratedQuestion.explanation}</p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={handleSaveAiQuestionToBank}
+                    disabled={aiSavingToDb}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase"
+                  >
+                    {aiSavingToDb ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                        <span>Đang Lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-emerald-300" />
+                        <span>Lưu Vào Ngân Hàng Đề Thi Đấu</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleGenerateAiQuestion()}
+                    disabled={aiGenerating}
+                    className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl transition-all active:scale-95 text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${aiGenerating ? 'animate-spin' : ''}`} />
+                    <span>Sinh Câu Khác</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Add Question Form (Thủ công) */}
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5">
+              <Plus className="w-4 h-4" />
+              <span>THÊM CÂU HỎI THỦ CÔNG VÀO NGÂN HÀNG ĐỀ</span>
+            </h3>
+
+            {formMsg && (
+              <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+                {formMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleAddQuestion} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1">Nội dung câu hỏi (*):</label>
+                <input
+                  type="text"
+                  required
+                  value={qText}
+                  onChange={e => setQText(e.target.value)}
+                  placeholder="VD: Số 29 có phải là số nguyên tố không?"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1">Hệ Toán Học:</label>
+                  <select
+                    value={qCategory}
+                    onChange={e => setQCategory(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  >
+                    {Object.entries(MATH_DOMAINS).map(([k, v]) => (
+                      <option key={k} value={k}>{v.nameVi} ({k})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1">Cấp Độ:</label>
+                  <select
+                    value={qLevel}
+                    onChange={e => setQLevel(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="THCS">THCS (Cấp 2)</option>
+                    <option value="THPT">THPT (Cấp 3)</option>
+                    <option value="DAI_HOC">Đại Học</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1">Thời Gian Trả Lời (giây):</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={60}
+                    value={qTimeLimit}
+                    onChange={e => setQTimeLimit(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 mb-1">Đáp Án Đúng (*):</label>
+                  <input
+                    type="text"
+                    required
+                    value={qAnswer}
+                    onChange={e => setQAnswer(e.target.value)}
+                    placeholder="VD: Có, hoặc 15, hoặc 4"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1">Các Lựa Chọn (cách nhau bởi dấu phẩy):</label>
+                  <input
+                    type="text"
+                    value={qOptions}
+                    onChange={e => setQOptions(e.target.value)}
+                    placeholder="VD: Có, Không hoặc 12, 14, 15, 16"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1">Lời Giải Thích Chi Tiết:</label>
+                <textarea
+                  rows={2}
+                  value={qExplanation}
+                  onChange={e => setQExplanation(e.target.value)}
+                  placeholder="Giải thích từng bước giúp người chơi học tập khi trả lời sai..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold rounded-xl shadow transition-all active:scale-95 uppercase"
+              >
+                Thêm Vào Ngân Hàng
+              </button>
+            </form>
+          </div>
+
+          {/* Questions List */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-slate-300">
+              DANH SÁCH CÂU HỎI HIỆN CÓ ({questions.length} CÂU)
+            </h4>
+            <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+              {questions.map((q, i) => (
+                <div
+                  key={q.id || i}
+                  className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-start justify-between gap-3 text-xs"
+                >
+                  <div>
+                    <div className="font-semibold text-slate-100 flex items-center gap-2 flex-wrap">
+                      <span>{q.question}</span>
+                      {q.sourceName && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-sky-950/80 text-sky-300 border border-sky-800 font-mono font-medium">
+                          🌐 {q.sourceName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-1 flex items-center gap-2 flex-wrap">
+                      <span>Hệ: {q.category}</span>
+                      <span>•</span>
+                      <span>Cấp: {q.level}</span>
+                      <span>•</span>
+                      <span>Đáp án: <strong className="text-emerald-400">{q.answer}</strong></span>
+                    </div>
+                  </div>
+
+                  {q.id?.startsWith('ADMIN_') && (
+                    <button
+                      onClick={() => handleDeleteQuestion(q.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: USERS LIST (PHÂN LOẠI TÀI KHOẢN ĐĂNG KÝ / CHƠI NHANH & QUẢN LÝ GÓI PRO) */}
+      {activeTab === 'users' && (() => {
+        const registeredUsers = users.filter(u => !isUserGuest(u) && u.role !== 'admin');
+        const guestUsers = users.filter(u => isUserGuest(u));
+        const proUsers = users.filter(u => isUserPro(u));
+
+        const filteredUsers = users.filter(u => {
+          if (userFilter === 'registered') {
+            if (isUserGuest(u) || u.role === 'admin') return false;
+          } else if (userFilter === 'guest') {
+            if (!isUserGuest(u)) return false;
+          } else if (userFilter === 'pro') {
+            if (!isUserPro(u)) return false;
+          }
+
+          if (userSearch.trim()) {
+            const query = userSearch.toLowerCase();
+            const matchName = (u.username || '').toLowerCase().includes(query);
+            const matchId = (u.id || '').toLowerCase().includes(query);
+            return matchName || matchId;
+          }
+          return true;
+        });
+
+        return (
+          <div className="space-y-4">
+            {/* TOOL: GIA HẠN GÓI PRO CHO NGƯỜI MÌNH MUỐN */}
+            <div className="p-4 bg-slate-900 border-2 border-yellow-600/50 rounded-2xl space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="font-cinzel text-sm font-bold text-yellow-300 flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-yellow-400" />
+                  <span>GIA HẠN / CẤP GÓI PRO CHO NGƯỜI BẠN MUỐN</span>
+                </h3>
+                <span className="text-[11px] text-slate-400">Công cụ độc quyền Admin</span>
+              </div>
+
+              {grantActionMsg && (
+                <div className="p-2.5 bg-emerald-950 border border-emerald-700 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>{grantActionMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCustomGrantByUsername} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                <div className="sm:col-span-2">
+                  <input
+                    type="text"
+                    value={customGrantUsername}
+                    onChange={e => setCustomGrantUsername(e.target.value)}
+                    placeholder="Nhập Tên đăng nhập hoặc ID người muốn gia hạn..."
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-yellow-400 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <select
+                    value={customGrantDays}
+                    onChange={e => setCustomGrantDays(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-yellow-400 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none"
+                  >
+                    <option value={7}>7 Ngày (1 Tuần)</option>
+                    <option value={30}>30 Ngày (1 Tháng)</option>
+                    <option value={60}>60 Ngày (2 Tháng)</option>
+                    <option value={90}>90 Ngày (3 Tháng)</option>
+                    <option value={180}>180 Ngày (6 Tháng)</option>
+                    <option value={365}>365 Ngày (1 Năm)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    disabled={grantActionLoading || !customGrantUsername.trim()}
+                    className="w-full py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {grantActionLoading ? 'Đang cấp...' : 'Gia Hạn PRO Ngay'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* USERS OVERVIEW & FILTERS */}
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 className="font-cinzel text-sm font-bold text-slate-200 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-400" />
+                  <span>DANH SÁCH NGƯỜI DÙNG ({users.length} PHÁP SƯ)</span>
+                </h3>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setUserFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      userFilter === 'all'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    Tất Cả ({users.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setUserFilter('registered')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      userFilter === 'registered'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-950 text-emerald-400/80 hover:text-emerald-300 border border-slate-800'
+                    }`}
+                  >
+                    🟢 Đã Đăng Ký ({registeredUsers.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setUserFilter('guest')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      userFilter === 'guest'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'bg-slate-950 text-amber-400/80 hover:text-amber-300 border border-slate-800'
+                    }`}
+                  >
+                    ⚡ Chơi Nhanh ({guestUsers.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setUserFilter('pro')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      userFilter === 'pro'
+                        ? 'bg-yellow-500 text-slate-950 shadow-sm'
+                        : 'bg-slate-950 text-yellow-400/80 hover:text-yellow-300 border border-slate-800'
+                    }`}
+                  >
+                    <Crown className="w-3 h-3" />
+                    <span>PRO ({proUsers.length})</span>
+                  </button>
+                </div>
+
+                {guestUsers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllGuests}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-700/80 hover:border-rose-500 text-rose-200 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 self-start sm:self-auto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Xóa Tất Cả Acc Chơi Nhanh ({guestUsers.length})</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Search Box */}
+              <div>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  placeholder="Tìm kiếm theo Tên tài khoản hoặc ID người dùng..."
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+
+              {/* User rows */}
+              <div className="space-y-2.5 pt-1">
+                {filteredUsers.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500 bg-slate-950 rounded-xl border border-slate-800">
+                    Không tìm thấy người dùng nào phù hợp với bộ lọc.
+                  </div>
+                ) : (
+                  filteredUsers.map(u => {
+                    const activePro = isUserPro(u);
+                    const isGuest = isUserGuest(u);
+                    const isAdmin = u.role === 'admin';
+
+                    return (
+                      <div
+                        key={u.id}
+                        className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl shrink-0">{u.avatar}</span>
+                          <div className="space-y-1">
+                            <div className="font-bold text-slate-200 flex items-center gap-2 flex-wrap">
+                              <span className="text-sm">{u.username}</span>
+
+                              {/* Account Type Classification Badges */}
+                              {isAdmin ? (
+                                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[10px] font-black rounded-md">
+                                  🛡️ ADMIN
+                                </span>
+                              ) : isGuest ? (
+                                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-400/40 text-amber-300 text-[10px] font-bold rounded-md flex items-center gap-1">
+                                  ⚡ CHƠI NHANH (KHÁCH)
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold rounded-md flex items-center gap-1">
+                                  🟢 ĐÃ ĐĂNG KÝ
+                                </span>
+                              )}
+
+                              {/* Pro VIP Badge */}
+                              {activePro && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 border border-yellow-400/50 text-yellow-300 text-[10px] font-black rounded-md">
+                                  <Crown className="w-3 h-3" />
+                                  <span>PRO VIP ({u.premiumPlan === 'monthly' ? 'Tháng' : 'Lời Giải'})</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2.5 flex-wrap">
+                              <span>ID: <span className="text-slate-300">{u.id}</span></span>
+                              <span>•</span>
+                              <span>Tạo: {new Date(u.createdAt).toLocaleDateString('vi-VN')}</span>
+                              {activePro && u.premiumExpiresAt && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-yellow-300 font-semibold">
+                                    Hạn PRO: {new Date(u.premiumExpiresAt).toLocaleDateString('vi-VN')}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions: Gia hạn gói PRO & Gỡ gói PRO */}
+                        {!isAdmin && (
+                          <div className="flex items-center gap-1.5 flex-wrap self-end md:self-auto">
+                            {activePro ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRevokePremium(u.id)}
+                                  className="px-2.5 py-1.5 bg-rose-950/60 border border-rose-700/60 hover:border-rose-500 text-rose-300 rounded-lg transition-colors font-medium text-[11px]"
+                                >
+                                  ❌ Gỡ Gói PRO
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleGrantPremium(u.id, 'monthly', 30)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-500/10 border border-yellow-500/40 hover:border-yellow-400 text-yellow-300 rounded-lg transition-colors font-medium text-[11px]"
+                                >
+                                  🔄 +30 Ngày
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleGrantPremium(u.id, 'monthly', 30)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-950/50 border border-yellow-700/60 hover:border-yellow-400 text-yellow-300 rounded-lg transition-colors font-medium text-[11px]"
+                              >
+                                <Crown className="w-3 h-3" />
+                                <span>Cấp PRO 30 Ngày</span>
+                              </button>
+                            )}
+
+                            {isGuest ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                title="Xóa tài khoản Chơi Nhanh này"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/60 border border-rose-800/80 hover:border-rose-500 text-rose-300 rounded-lg hover:bg-rose-900 transition-colors text-[11px] font-medium"
+                              >
+                                <Trash2 className="w-3 h-3 text-rose-400" />
+                                <span>Xóa Acc Khách</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                title="Xóa tài khoản này"
+                                className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-900 border border-slate-800 transition-colors"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* TAB 4: PREMIUM REQUESTS */}
+      {activeTab === 'premium' && (
+        <div className="space-y-4">
+          {premiumActionMsg && (
+            <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+              {premiumActionMsg}
+            </div>
+          )}
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
+            <h3 className="font-cinzel text-sm font-bold text-slate-200 flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-yellow-400" />
+              <span>YÊU CẦU MUA GÓI PREMIUM ({premiumRequests.filter(r => r.status === 'pending').length} ĐANG CHỜ)</span>
+            </h3>
+
+            {premiumRequests.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500">Chưa có yêu cầu nào.</div>
+            ) : (
+              <div className="space-y-2">
+                {premiumRequests.map(r => (
+                  <div
+                    key={r.id}
+                    className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200">
+                        {r.username} — <span className="text-amber-300">{r.plan === 'monthly' ? 'Gói Tháng' : 'Gói Xem Lời Giải'}</span>
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500">
+                        {formatVnd(r.price)} • {new Date(r.createdAt).toLocaleString('vi-VN')} •{' '}
+                        <span className={
+                          r.status === 'pending' ? 'text-amber-400' : r.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'
+                        }>
+                          {r.status === 'pending' ? 'ĐANG CHỜ' : r.status === 'approved' ? 'ĐÃ DUYỆT' : 'ĐÃ TỪ CHỐI'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {r.status === 'pending' && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleResolvePremiumRequest(r.id, true)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-800/50 hover:border-emerald-500 text-emerald-300 rounded-lg transition-colors"
+                        >
+                          <CheckCircle className="w-3 h-3" /> Duyệt
+                        </button>
+                        <button
+                          onClick={() => handleResolvePremiumRequest(r.id, false)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/40 border border-rose-800/50 hover:border-rose-500 text-rose-300 rounded-lg transition-colors"
+                        >
+                          <XCircle className="w-3 h-3" /> Từ Chối
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SITE SETTINGS */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <form onSubmit={handleSaveSettings} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5">
+              <Link2 className="w-4 h-4" />
+              <span>ĐƯỜNG LINK HƯỚNG DẪN Ở TRANG CHỦ</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Link này sẽ hiện ở nút "Hướng Dẫn Chi Tiết" trên Trang Chủ (VD: link nhóm Zalo, Facebook, video Youtube hướng dẫn...).
+            </p>
+            <input
+              type="url"
+              value={settingsForm.guideLink || ''}
+              onChange={e => setSettingsForm(f => ({ ...f, guideLink: e.target.value }))}
+              placeholder="https://..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+            />
+
+            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5 pt-2">
+              <Crown className="w-4 h-4" />
+              <span>GIÁ GÓI PREMIUM</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 mb-1 text-xs">Gói Xem Lời Giải (một lần, 30 ngày):</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={settingsForm.solutionPackagePrice ?? 0}
+                  onChange={e => setSettingsForm(f => ({ ...f, solutionPackagePrice: Number(e.target.value) }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 mb-1 text-xs">Gói Tháng (rẻ hơn, tự động 30 ngày):</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={settingsForm.monthlyPackagePrice ?? 0}
+                  onChange={e => setSettingsForm(f => ({ ...f, monthlyPackagePrice: Number(e.target.value) }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                />
+              </div>
+            </div>
+
+            <h3 className="font-cinzel text-sm font-bold text-amber-300 flex items-center gap-1.5 pt-2">
+              <Landmark className="w-4 h-4" />
+              <span>THÔNG TIN CHUYỂN KHOẢN (HIỂN THỊ CHO NGƯỜI MUA GÓI)</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-300 mb-1 text-xs">Ngân Hàng:</label>
+                <input
+                  type="text"
+                  value={settingsForm.bankName || ''}
+                  onChange={e => setSettingsForm(f => ({ ...f, bankName: e.target.value }))}
+                  placeholder="VD: Vietcombank"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 mb-1 text-xs">Chủ Tài Khoản:</label>
+                <input
+                  type="text"
+                  value={settingsForm.bankAccountName || ''}
+                  onChange={e => setSettingsForm(f => ({ ...f, bankAccountName: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 mb-1 text-xs">Số Tài Khoản:</label>
+                <input
+                  type="text"
+                  value={settingsForm.bankAccountNumber || ''}
+                  onChange={e => setSettingsForm(f => ({ ...f, bankAccountNumber: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400 font-mono"
+                />
+              </div>
+            </div>
+
+            {settingsMsg && (
+              <div className="p-2.5 bg-indigo-950 border border-indigo-700 text-indigo-200 text-xs rounded-xl">
+                {settingsMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={settingsSaving}
+              className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
+            >
+              {settingsSaving ? 'Đang lưu...' : 'Lưu Cài Đặt'}
+            </button>
+          </form>
+
+          <div className="p-5 bg-slate-900 border border-rose-900/50 rounded-2xl space-y-3">
+            <h3 className="font-cinzel text-sm font-bold text-rose-300 flex items-center gap-1.5">
+              <RotateCcw className="w-4 h-4" />
+              <span>RESET BẢNG XẾP HẠNG TUẦN</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Hệ thống tự động reset điểm Bảng Xếp Hạng về 0đ mỗi 7 ngày. Bạn cũng có thể bấm nút dưới đây để reset thủ công ngay bây giờ.
+              Lần reset gần nhất: {settings?.lastLeaderboardReset ? new Date(settings.lastLeaderboardReset).toLocaleString('vi-VN') : '—'}.
+              (Điểm kỷ lục mọi thời đại ở mục "Tất Cả Thời Gian" không bị ảnh hưởng.)
+            </p>
+            <button
+              onClick={handleResetLeaderboard}
+              disabled={resetLoading}
+              className="px-5 py-2.5 bg-gradient-to-r from-rose-700 to-red-700 hover:from-rose-600 hover:to-red-600 text-white font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
+            >
+              {resetLoading ? 'Đang reset...' : 'Reset Ngay (Về 0đ)'}
+            </button>
+          </div>
+
+          <div className="p-5 bg-slate-900 border border-rose-900/50 rounded-2xl space-y-3">
+            <h3 className="font-cinzel text-sm font-bold text-rose-300 flex items-center gap-1.5">
+              <RotateCcw className="w-4 h-4" />
+              <span>RESET BẢNG XẾP HẠNG TOÀN THỜI GIAN</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Đưa điểm kỷ lục "Tất Cả Thời Gian" của TOÀN BỘ người chơi về 0đ. Khác với reset tuần ở trên
+              (chỉ ảnh hưởng bảng xếp hạng tuần), thao tác này xoá sạch thành tích cao nhất mọi thời đại và
+              KHÔNG THỂ hoàn tác — chỉ dùng khi thật sự cần (ví dụ: bắt đầu mùa giải mới).
+            </p>
+            <button
+              onClick={handleResetAllTimeLeaderboard}
+              disabled={resetAllTimeLoading}
+              className="px-5 py-2.5 bg-gradient-to-r from-rose-700 to-red-700 hover:from-rose-600 hover:to-red-600 text-white font-bold rounded-xl shadow transition-all active:scale-95 uppercase disabled:opacity-50"
+            >
+              {resetAllTimeLoading ? 'Đang reset...' : 'Reset Ngay (Về 0đ)'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
