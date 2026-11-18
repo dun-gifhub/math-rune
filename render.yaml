@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: math-rune
+    runtime: node
+    plan: free # Giờ có thể dùng "free" thoải mái — dữ liệu lưu ở Neon (Postgres), không phụ thuộc ổ đĩa của Render nữa.
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: ADMIN_PASSWORD
+        sync: false # đặt thủ công trong Render Dashboard -> Environment
+      - key: DATABASE_URL
+        sync: false # dán connection string lấy từ https://console.neon.tech vào đây (Dashboard -> Environment)
